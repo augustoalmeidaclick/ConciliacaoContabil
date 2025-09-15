@@ -9,6 +9,7 @@
 "
     />
     <style>
+      /* Reset / base */
       *,
       *::before,
       *::after {
@@ -23,11 +24,13 @@
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto,
           Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       }
+
+      /* Tokens / tema */
       :root {
         --bg0: #0f172a;
         --bg1: #111827;
-        --ok: #16a34a;
-        --ok-600: #15803d;
+        --c1: #22d3ee; /* cyan */
+        --c2: #8b5cf6; /* violet */
         --text: #0b1220;
         --muted: #6b7280;
         --shadow: 0 10px 30px rgba(2, 6, 23, 0.35);
@@ -42,37 +45,96 @@
           --muted: #9ca3af;
         }
       }
+
+      /* Página — LiquidGlass + blobs */
       .page {
         min-height: 100dvh;
         display: grid;
         place-items: center;
         background: radial-gradient(
-            1200px 800px at 10% -10%,
-            rgba(124, 58, 237, 0.25),
+            1400px 900px at 15% -10%,
+            rgba(139, 92, 246, 0.15),
             transparent 60%
           ),
           radial-gradient(
-            1000px 900px at 110% 10%,
-            rgba(96, 165, 250, 0.2),
+            1200px 900px at 110% 10%,
+            rgba(34, 211, 238, 0.14),
             transparent 60%
           ),
-          linear-gradient(180deg, #f8fafc, #eef2ff 30%, #f8fafc);
+          linear-gradient(180deg, #f8fafc, #eef2ff 30%, #fafafa);
+        position: relative;
+        overflow: hidden;
       }
       @media (prefers-color-scheme: dark) {
         .page {
           background: radial-gradient(
-              1200px 800px at 10% -10%,
-              rgba(124, 58, 237, 0.15),
+              1400px 900px at 15% -10%,
+              rgba(139, 92, 246, 0.12),
               transparent 60%
             ),
             radial-gradient(
-              1000px 900px at 110% 10%,
-              rgba(96, 165, 250, 0.12),
+              1200px 900px at 110% 10%,
+              rgba(34, 211, 238, 0.1),
               transparent 60%
             ),
             linear-gradient(180deg, var(--bg0), var(--bg1));
         }
       }
+
+      /* Blobs animados */
+      .page::before,
+      .page::after {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        width: 56vmax;
+        height: 56vmax;
+        filter: blur(40px);
+        opacity: 0.24;
+        transform: translate(-10%, -15%);
+        pointer-events: none;
+        animation: lg-blob 14s ease-in-out infinite alternate;
+      }
+      .page::before {
+        left: -20vmax;
+        top: -25vmax;
+        background: radial-gradient(
+            closest-side at 40% 40%,
+            var(--c2),
+            transparent 60%
+          ),
+          radial-gradient(closest-side at 70% 60%, var(--c1), transparent 65%);
+      }
+      .page::after {
+        right: -18vmax;
+        bottom: -30vmax;
+        background: radial-gradient(
+            closest-side at 50% 50%,
+            var(--c1),
+            transparent 60%
+          ),
+          radial-gradient(closest-side at 65% 40%, var(--c2), transparent 65%);
+        animation-duration: 16s;
+      }
+      @keyframes lg-blob {
+        to {
+          transform: translate(10%, 5%) scale(1.06);
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        .page::before,
+        .page::after {
+          opacity: 0.2;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .page::before,
+        .page::after {
+          animation: none;
+        }
+      }
+
+      /* Cartão */
       .card {
         width: min(420px, 92vw);
         padding: 32px;
@@ -87,6 +149,7 @@
         position: relative;
         overflow: hidden;
         text-align: center;
+        z-index: 1;
       }
       @media (prefers-color-scheme: dark) {
         .card {
@@ -94,11 +157,15 @@
           border-color: rgba(148, 163, 184, 0.15);
         }
       }
+
+      /* Título e texto */
       h1 {
         margin: 0 0 12px;
         font-size: clamp(26px, 4vw, 32px);
         font-weight: 700;
-        color: var(--ok);
+        background: linear-gradient(90deg, var(--c1), var(--c2));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
       p {
         margin: 0 0 20px;
@@ -106,11 +173,11 @@
         font-size: 16px;
       }
 
+      /* Ícone */
       .icon {
         font-size: 42px;
         margin-bottom: 12px;
-        color: var(--ok);
-        display: inline-block;
+        color: var(--c2); /* usa o violeta */
         animation: pop-in 0.36s ease-out both, pulse 0.9s 0.36s ease-out 2;
       }
       @keyframes pop-in {
@@ -128,18 +195,19 @@
       @keyframes pulse {
         0% {
           transform: scale(1);
-          text-shadow: 0 0 0 rgba(22, 163, 74, 0);
+          text-shadow: none;
         }
         40% {
           transform: scale(1.08);
-          text-shadow: 0 6px 18px rgba(22, 163, 74, 0.35);
+          text-shadow: 0 6px 18px rgba(139, 92, 246, 0.35);
         }
         100% {
           transform: scale(1);
-          text-shadow: 0 0 0 rgba(22, 163, 74, 0);
+          text-shadow: none;
         }
       }
 
+      /* Botões */
       .btn {
         display: inline-flex;
         align-items: center;
@@ -148,32 +216,40 @@
         margin-top: 10px;
         padding: 12px 20px;
         font-size: 16px;
-        font-weight: 600;
+        font-weight: 700;
         border: 0;
         border-radius: 12px;
         cursor: pointer;
         text-decoration: none;
-        line-height: 1;
-        vertical-align: middle;
         transition: transform 0.08s ease, filter 0.2s ease;
       }
       .btn:active {
         transform: translateY(1px);
       }
 
-      /* Estilos de prioridade */
       .btn-primary {
-        background: linear-gradient(90deg, var(--ok), var(--ok-600));
+        /* gradiente mais escuro e saturado */
+        background: linear-gradient(
+          100deg,
+          color-mix(in srgb, var(--c1) 85%, #0e7490 15%),
+          color-mix(in srgb, var(--c2) 85%, #4c1d95 15%)
+        );
         color: #fff;
-        font-weight: 700;
-        box-shadow: 0 6px 14px rgba(22, 163, 74, 0.35);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+          /* borda interna sutil */ 0 6px 16px rgba(139, 92, 246, 0.35); /* sombra externa */
       }
+
       .btn-primary:hover {
-        filter: brightness(1.05);
+        filter: brightness(1.07);
+      }
+
+      .btn-primary:active {
+        transform: translateY(1px);
+        filter: brightness(0.95);
       }
 
       .btn-secondary {
-        background: rgba(15, 23, 42, 0.3);
+        background: transparent;
         color: var(--text);
         border: 1px solid rgba(148, 163, 184, 0.6);
         backdrop-filter: blur(8px) saturate(140%);
@@ -181,7 +257,7 @@
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
       }
       .btn-secondary:hover {
-        border-color: #60a5fa;
+        border-color: var(--c2);
       }
     </style>
   </head>
@@ -208,9 +284,8 @@
               $items('Converte em HTML/CSS/JS')[0].binary.data.fileName ||
                 'relatorio_conciliacao.html'
             }}"
+            >Baixar arquivo</a
           >
-            Baixar arquivo
-          </a>
         </div>
       </div>
     </div>
