@@ -1,0 +1,749 @@
+function normalizeToDDMMYY(y, m, d) {
+  const dd = String(d).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const yy = String(y).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+// ---- NF ----
+function extractNFNumber(historico) {
+  if (!historico) return null;
+  const s = String(historico);
+  const re =
+    /\b(?:NF(?:-?e)?|NFe|Nota\s*Fiscal|N[º°]|No\.?)\s*[:\-#.]?\s*(\d{3,})\b/i;
+  const m = s.match(re);
+  return m ? m[1] : null;
+}
+
+// >>> Normaliza NF: mantém só dígitos e remove zeros à esquerda
+function normalizeNF(nf) {
+  if (nf == null) return null;
+  const digs = onlyDigits(String(nf));
+  if (!digs) return null;
+  const norm = digs.replace(/^0+/, "") || "0";
+  return norm;
+}
+
+// ---- Valores ----
+function parseValor(v) {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return v;
+  let s = String(v).trim();
+  if (s.match(/,\d{1,2}\b/)) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  const n = Number(s);
+  return isNaN(n) ? 0 : n;
+}
+function toCentavos(v) {
+  return Math.round(parseValor(v) * 100);
+}
+function fromCentavos(c) {
+  return c / 100;
+}
+
+// ---- Datas ----
+const PT_BR_MONTHS = {
+  jan: 1,
+  janeiro: 1,
+  fev: 2,
+  fevereiro: 2,
+  mar: 3,
+  março: 3,
+  marco: 3,
+  abr: 4,
+  abril: 4,
+  mai: 5,
+  maio: 5,
+  jun: 6,
+  junho: 6,
+  jul: 7,
+  julho: 7,
+  ago: 8,
+  agosto: 8,
+  set: 9,
+  setembro: 9,
+  out: 10,
+  outubro: 10,
+  nov: 11,
+  novembro: 11,
+  dez: 12,
+  dezembro: 12,
+};
+
+function extractDate(historico) {
+  if (!historico) return null;
+  const s = String(historico);
+
+  let m;
+
+  // 1) dd/mm/yyyy ou dd/mm/yy
+  m = s.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
+  if (m) {
+    const [, dd, mm, yy] = m;
+    const y =
+      yy.length === 2
+        ? Number(yy) >= 70
+          ? 1900 + Number(yy)
+          : 2000 + Number(yy)
+        : Number(yy);
+    return normalizeToDDMMYY(y, Number(mm), Number(dd));
+  }
+
+  // 2) dd-mm-yyyy ou dd-mm-yy
+  m = s.match(/\b(\d{1,2})-(\d{1,2})-(\d{2,4})\b/);
+  if (m) {
+    const [, dd, mm, yy] = m;
+    const y =
+      yy.length === 2
+        ? Number(yy) >= 70
+          ? 1900 + Number(yy)
+          : 2000 + Number(yy)
+        : Number(yy);
+    return normalizeToDDMMYY(y, Number(mm), Number(dd));
+  }
+
+  // 3) dd.mm.yyyy
+  m = s.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
+  if (m) {
+    const [, dd, mm, yyyy] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 4) yyyy-mm-dd
+  m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if (m) {
+    const [, yyyy, mm, dd] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 5) yyyy/mm/dd
+  m = s.match(/\b(\d{4})\/(\d{1,2})\/(\d{1,2})\b/);
+  if (m) {
+    const [, yyyy, mm, dd] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 6) yyyy.mm.dd
+  m = s.match(/\b(\d{4})\.(\d{1,2})\.(\d{1,2})\b/);
+  if (m) {
+    const [, yyyy, mm, dd] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 7) "10 de março de 2024" | "10 mar 2024"
+  m = s.match(
+    /\b(\d{1,2})\s*(?:de\s*)?([A-Za-zçãéôáíóú]+)\s*(?:de\s*)?(\d{4})\b/iu
+  );
+  if (m) {
+    const [, dd, mesStr, yyyy] = m;
+    const key = mesStr
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    const mm = PT_BR_MONTHS[key];
+    if (mm) return normalizeToDDMMYY(Number(yyyy), mm, Number(dd));
+  }
+
+  return null;
+}
+
+function fromAnyToDDMMYY(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return normalizeToDDMMYY(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+// ---- CNPJ ----
+function onlyDigits(s) {
+  return String(s || "").replace(/\D+/g, "");
+}
+
+function formatCnpj(digs) {
+  if (digs.length !== 14) return null;
+  return `${digs.slice(0, 2)}.${digs.slice(2, 5)}.${digs.slice(
+    5,
+    8
+  )}/${digs.slice(8, 12)}-${digs.slice(12)}`;
+}
+
+function extrairCnpj(campo) {
+  if (!campo) return null;
+  const s = String(campo);
+  let m = s.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
+  if (m) return m[1];
+  const digs = onlyDigits(s);
+  if (digs.length === 14) return formatCnpj(digs);
+  return null;
+}
+
+// ---- Empresa ----
+function extrairNomeEmpresa(campoEmpresa, historicoOpcional) {
+  let fonte = campoEmpresa ?? "";
+
+  if (typeof fonte === "string") {
+    const mJson = fonte.match(/"empresa"\s*:\s*"([^"]+)"/i);
+    if (mJson) fonte = mJson[1];
+  }
+
+  const rotuloRe =
+    /(?:Empresa|Fornecedor|Raz[aã]o\s*Social)\s*[:\-]?\s*([^\n\r;,|]+?)(?=\s*(?:CNPJ|CPF|NF(?:-?e)?|Nota|$)|[,;]|$)/iu;
+
+  let m = String(fonte || "").match(rotuloRe);
+  if (!m && historicoOpcional) {
+    m = String(historicoOpcional).match(rotuloRe);
+  }
+  if (m) return m[1].replace(/\s{2,}/g, " ").trim();
+
+  const nomeDireto = String(fonte || "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return nomeDireto || null;
+}
+
+// ---- Helper simples: primeiro valor não vazio ----
+function firstNonEmpty(arr) {
+  for (const v of arr) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return null;
+}
+
+// ================= Processamento =================
+
+const creditos = [];
+const debitos = [];
+
+// mapeia itens mantendo índice original
+items
+  .map((i, idx) => ({ ...i.json, __idx: idx }))
+  .forEach((item) => {
+    const nf_raw = extractNFNumber(item.historico);
+    const nf = normalizeNF(nf_raw); // <<< usa NF normalizada para agrupar
+
+    const cnpj = extrairCnpj(item.cnpj);
+    const nome = extrairNomeEmpresa(item.empresa, item.historico);
+
+    // campos de conta (aceita variações)
+    const conta_numero = item.conta_numero ?? item.conta_num ?? null;
+    const conta_codigo = item.conta_codigo ?? item.conta_cod ?? null;
+    const conta_descricao = item.conta_descricao ?? item.conta_desc ?? null;
+
+    const valorCred = toCentavos(item.credito);
+    const valorDeb = toCentavos(item.debito);
+
+    // saldo_exercicio em centavos (se existir no JSON)
+    const saldoExCent = toCentavos(item.saldo_exercicio);
+
+    if (valorCred) {
+      creditos.push({
+        __idx: item.__idx,
+        nf,
+        cnpj,
+        nome,
+        conta_numero,
+        conta_codigo,
+        conta_descricao,
+        valorCent: valorCred,
+        lancamento_credito: item.numero,
+        historico: item.historico,
+        data_original: item.data,
+        saldoExCent,
+      });
+    }
+
+    if (valorDeb) {
+      debitos.push({
+        __idx: item.__idx,
+        nf,
+        cnpj,
+        nome,
+        conta_numero,
+        conta_codigo,
+        conta_descricao,
+        valorCent: valorDeb,
+        lancamento_debito: item.numero,
+        historico: item.historico,
+        data_original: item.data,
+        saldoExCent,
+      });
+    }
+  });
+
+// Agrupar por NF; itens SEM NF ficam separados
+const map = new Map();
+
+// Indexa créditos
+for (const c of creditos) {
+  const key = c.nf ? `NF_${c.nf}` : `SEMNF_C_${c.__idx}`;
+  if (!map.has(key))
+    map.set(key, { nf: c.nf ?? null, entradas: [], pagamentos: [] });
+  map.get(key).entradas.push(c);
+}
+
+// Indexa débitos
+for (const d of debitos) {
+  const key = d.nf ? `NF_${d.nf}` : `SEMNF_D_${d.__idx}`;
+  if (!map.has(key))
+    map.set(key, { nf: d.nf ?? null, entradas: [], pagamentos: [] });
+  map.get(key).pagamentos.push(d);
+}
+
+const conciliacoes = [];
+
+for (const { nf, entradas, pagamentos } of map.values()) {
+  const valor_creditado_cent = entradas.reduce(
+    (acc, cur) => acc + cur.valorCent,
+    0
+  );
+  const valor_debitado_cent = pagamentos.reduce(
+    (acc, cur) => acc + cur.valorCent,
+    0
+  );
+
+  // ---------- Lógica de status ----------
+  let status;
+  if (valor_creditado_cent === 0 && valor_debitado_cent === 0) {
+    status = "NF não localizada";
+  } else if (!nf && valor_creditado_cent === 0 && valor_debitado_cent > 0) {
+    status = "Não Conciliado";
+  } else if (valor_debitado_cent === 0 && valor_creditado_cent > 0) {
+    status = "Crédito não correspondido";
+  } else if (valor_creditado_cent === 0 && valor_debitado_cent > 0) {
+    status = "Débito não correspondido";
+  } else if (valor_creditado_cent === valor_debitado_cent) {
+    status = "Conciliado";
+  } else {
+    status = "Conciliação Divergente"; // <<< novo nome
+  }
+
+  // histórico para data do "cabeçalho" da NF
+  const historicoRef = entradas[0]?.historico || pagamentos[0]?.historico || "";
+  let dataNF = extractDate(historicoRef);
+  if (!dataNF) {
+    const dataFallback =
+      entradas[0]?.data_original || pagamentos[0]?.data_original || null;
+    dataNF = fromAnyToDDMMYY(dataFallback);
+  }
+
+  const cnpj = entradas[0]?.cnpj || pagamentos[0]?.cnpj || null;
+  const empresa = entradas[0]?.nome || pagamentos[0]?.nome || null;
+
+  // saldo_exercicio "final" do grupo (pega do item mais recente que tenha saldoExCent)
+  const todos = [...entradas, ...pagamentos].filter(
+    (x) => typeof x.saldoExCent === "number" && !Number.isNaN(x.saldoExCent)
+  );
+
+  let saldo_exercicio_cent = null;
+  if (todos.length) {
+    const ultimo = todos.reduce((a, b) => (a.__idx > b.__idx ? a : b));
+    saldo_exercicio_cent = ultimo.saldoExCent;
+  }
+
+  // agregar conta_* do grupo (primeiro não-vazio)
+  const todosConta = [...entradas, ...pagamentos];
+  const conta_numero = firstNonEmpty(todosConta.map((x) => x.conta_numero));
+  const conta_codigo = firstNonEmpty(todosConta.map((x) => x.conta_codigo));
+  const conta_descricao = firstNonEmpty(
+    todosConta.map((x) => x.conta_descricao)
+  );
+
+  // >>> Detalhes por lançamento (data, número, valor, histórico)
+  const detalhes_credito = entradas.map((e) => ({
+    numero: e.lancamento_credito ?? null,
+    data: extractDate(e.historico) || fromAnyToDDMMYY(e.data_original) || null,
+    valor: fromCentavos(e.valorCent),
+    historico: e.historico ?? null,
+  }));
+
+  const detalhes_debito = pagamentos.map((p) => ({
+    numero: p.lancamento_debito ?? null,
+    data: extractDate(p.historico) || fromAnyToDDMMYY(p.data_original) || null,
+    valor: fromCentavos(p.valorCent),
+    historico: p.historico ?? null,
+  }));
+
+  conciliacoes.push({
+    nf,
+    data: dataNF || null,
+    cnpj,
+    empresa,
+
+    // conta_* agregados
+    conta_numero: conta_numero ?? null,
+    conta_codigo: conta_codigo ?? null,
+    conta_descricao: conta_descricao ?? null,
+
+    // Totais por NF
+    valor_creditado: fromCentavos(valor_creditado_cent),
+    valor_debitado: fromCentavos(valor_debitado_cent),
+
+    // Detalhes linha a linha
+    detalhes_credito,
+    detalhes_debito,
+
+    status,
+
+    // compat (se algum passo ainda usa)
+    lancamento_credito: entradas.map((e) => e.lancamento_credito),
+    lancamento_debito: pagamentos.map((p) => p.lancamento_debito),
+    historico_credito: entradas.map((e) => e.historico ?? null),
+    historico_debito: pagamentos.map((p) => p.historico ?? null),
+    historico_origem: historicoRef || null,
+
+    saldo_exercicio:
+      saldo_exercicio_cent != null ? fromCentavos(saldo_exercicio_cent) : null,
+  });
+}
+
+return conciliacoes.map((c) => ({ json: c }));
+
+/*
+
+function normalizeToDDMMYY(y, m, d) {
+  const dd = String(d).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const yy = String(y).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+// ---- NF ----
+function extractNFNumber(historico) {
+  if (!historico) return null;
+  const s = String(historico);
+  const re = /\b(?:NF(?:-?e)?|NFe|Nota\s*Fiscal|N[º°]|No\.?)\s*[:\-#.]?\s*(\d{3,})\b/i;
+  const m = s.match(re);
+  return m ? m[1] : null;
+}
+
+// >>> Normaliza NF: mantém só dígitos e remove zeros à esquerda
+function normalizeNF(nf) {
+  if (nf == null) return null;
+  const digs = onlyDigits(String(nf));
+  if (!digs) return null;
+  const norm = digs.replace(/^0+/, '') || '0';
+  return norm;
+}
+
+// ---- Valores ----
+function parseValor(v) {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return v;
+  let s = String(v).trim();
+  if (s.match(/,\d{1,2}\b/)) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  const n = Number(s);
+  return isNaN(n) ? 0 : n;
+}
+function toCentavos(v) { return Math.round(parseValor(v) * 100); }
+function fromCentavos(c) { return c / 100; }
+
+// ---- Datas ----
+const PT_BR_MONTHS = {
+  jan: 1, janeiro: 1,
+  fev: 2, fevereiro: 2,
+  mar: 3, março: 3, marco: 3,
+  abr: 4, abril: 4,
+  mai: 5, maio: 5,
+  jun: 6, junho: 6,
+  jul: 7, julho: 7,
+  ago: 8, agosto: 8,
+  set: 9, setembro: 9,
+  out:10, outubro: 10,
+  nov:11, novembro: 11,
+  dez:12, dezembro: 12,
+};
+
+function extractDate(historico) {
+  if (!historico) return null;
+  const s = String(historico);
+
+  let m;
+
+  // 1) dd/mm/yyyy ou dd/mm/yy
+  m = s.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
+  if (m) {
+    const [, dd, mm, yy] = m;
+    const y = yy.length === 2 ? (Number(yy) >= 70 ? 1900 + Number(yy) : 2000 + Number(yy)) : Number(yy);
+    return normalizeToDDMMYY(y, Number(mm), Number(dd));
+  }
+
+  // 2) dd-mm-yyyy ou dd-mm-yy
+  m = s.match(/\b(\d{1,2})-(\d{1,2})-(\d{2,4})\b/);
+  if (m) {
+    const [, dd, mm, yy] = m;
+    const y = yy.length === 2 ? (Number(yy) >= 70 ? 1900 + Number(yy) : 2000 + Number(yy)) : Number(yy);
+    return normalizeToDDMMYY(y, Number(mm), Number(dd));
+  }
+
+  // 3) dd.mm.yyyy
+  m = s.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
+  if (m) {
+    const [, dd, mm, yyyy] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 4) yyyy-mm-dd
+  m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if (m) {
+    const [, yyyy, mm, dd] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 5) yyyy/mm/dd
+  m = s.match(/\b(\d{4})\/(\d{1,2})\/(\d{1,2})\b/);
+  if (m) {
+    const [, yyyy, mm, dd] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 6) yyyy.mm.dd
+  m = s.match(/\b(\d{4})\.(\d{1,2})\.(\d{1,2})\b/);
+  if (m) {
+    const [, yyyy, mm, dd] = m;
+    return normalizeToDDMMYY(Number(yyyy), Number(mm), Number(dd));
+  }
+
+  // 7) "10 de março de 2024" | "10 mar 2024"
+  m = s.match(/\b(\d{1,2})\s*(?:de\s*)?([A-Za-zçãéôáíóú]+)\s*(?:de\s*)?(\d{4})\b/iu);
+  if (m) {
+    const [, dd, mesStr, yyyy] = m;
+    const key = mesStr.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const mm = PT_BR_MONTHS[key];
+    if (mm) return normalizeToDDMMYY(Number(yyyy), mm, Number(dd));
+  }
+
+  return null;
+}
+
+function fromAnyToDDMMYY(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return normalizeToDDMMYY(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+// ---- CNPJ ----
+function onlyDigits(s) { return String(s || "").replace(/\D+/g, ""); }
+
+function formatCnpj(digs) {
+  if (digs.length !== 14) return null;
+  return `${digs.slice(0,2)}.${digs.slice(2,5)}.${digs.slice(5,8)}/${digs.slice(8,12)}-${digs.slice(12)}`;
+}
+
+function extrairCnpj(campo) {
+  if (!campo) return null;
+  const s = String(campo);
+  let m = s.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
+  if (m) return m[1];
+  const digs = onlyDigits(s);
+  if (digs.length === 14) return formatCnpj(digs);
+  return null;
+}
+
+// ---- Empresa ----
+function extrairNomeEmpresa(campoEmpresa, historicoOpcional) {
+  let fonte = campoEmpresa ?? "";
+
+  if (typeof fonte === "string") {
+    const mJson = fonte.match(/"empresa"\s*:\s*"([^"]+)"/i);
+    if (mJson) fonte = mJson[1];
+  }
+
+  const rotuloRe =
+    /(?:Empresa|Fornecedor|Raz[aã]o\s*Social)\s*[:\-]?\s*([^\n\r;,|]+?)(?=\s*(?:CNPJ|CPF|NF(?:-?e)?|Nota|$)|[,;]|$)/iu;
+
+  let m = String(fonte || "").match(rotuloRe);
+  if (!m && historicoOpcional) {
+    m = String(historicoOpcional).match(rotuloRe);
+  }
+  if (m) return m[1].replace(/\s{2,}/g, " ").trim();
+
+  const nomeDireto = String(fonte || "").replace(/\s{2,}/g, " ").trim();
+  return nomeDireto || null;
+}
+
+// ---- Helpers ----
+function firstNonEmpty(arr) {
+  for (const v of arr) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return null;
+}
+
+function firstDigit(str) {
+  const digs = onlyDigits(str);
+  return digs ? digs.charAt(0) : null;
+}
+
+// ================= Processamento =================
+
+const creditos = [];
+const debitos = [];
+
+items.map((i, idx) => ({ ...i.json, __idx: idx })).forEach(item => {
+  const nf_raw = extractNFNumber(item.historico);
+  const nf = normalizeNF(nf_raw);
+
+  const cnpj = extrairCnpj(item.cnpj);
+  const nome = extrairNomeEmpresa(item.empresa, item.historico);
+
+  const conta_numero     = item.conta_numero ?? item.conta_num ?? null;
+  const conta_codigo     = item.conta_codigo ?? item.conta_cod ?? null;
+  const conta_descricao  = item.conta_descricao ?? item.conta_desc ?? null;
+  const conta_codigo_primeiro = conta_codigo != null ? firstDigit(String(conta_codigo)) : null;
+
+  const valorCred = toCentavos(item.credito);
+  const valorDeb = toCentavos(item.debito);
+
+  const saldoExCent = toCentavos(item.saldo_exercicio);
+
+  if (valorCred) {
+    creditos.push({
+      __idx: item.__idx,
+      nf, cnpj, nome,
+      conta_numero, conta_codigo, conta_descricao,
+      conta_codigo_primeiro,
+      valorCent: valorCred,
+      lancamento_credito: item.numero,
+      historico: item.historico,
+      data_original: item.data,
+      saldoExCent,
+    });
+  }
+
+  if (valorDeb) {
+    debitos.push({
+      __idx: item.__idx,
+      nf, cnpj, nome,
+      conta_numero, conta_codigo, conta_descricao,
+      conta_codigo_primeiro,
+      valorCent: valorDeb,
+      lancamento_debito: item.numero,
+      historico: item.historico,
+      data_original: item.data,
+      saldoExCent,
+    });
+  }
+});
+
+// Agrupar por NF
+const map = new Map();
+
+for (const c of creditos) {
+  const key = c.nf ? `NF_${c.nf}` : `SEMNF_C_${c.__idx}`;
+  if (!map.has(key)) map.set(key, { nf: c.nf ?? null, entradas: [], pagamentos: [] });
+  map.get(key).entradas.push(c);
+}
+
+for (const d of debitos) {
+  const key = d.nf ? `NF_${d.nf}` : `SEMNF_D_${d.__idx}`;
+  if (!map.has(key)) map.set(key, { nf: d.nf ?? null, entradas: [], pagamentos: [] });
+  map.get(key).pagamentos.push(d);
+}
+
+const conciliacoes = [];
+
+for (const { nf, entradas, pagamentos } of map.values()) {
+  const valor_creditado_cent = entradas.reduce((acc, cur) => acc + cur.valorCent, 0);
+  const valor_debitado_cent  = pagamentos.reduce((acc, cur) => acc + cur.valorCent, 0);
+
+  const todosConta = [...entradas, ...pagamentos];
+  const conta_codigo_primeiro = firstNonEmpty(todosConta.map(x => x.conta_codigo_primeiro));
+  const conta_codigo_num = conta_codigo_primeiro ? Number(conta_codigo_primeiro) : null;
+
+  // ---------- Lógica de status (sem "Crédito/Débito não correspondido") ----------
+  let status;
+
+  if (valor_creditado_cent === 0 && valor_debitado_cent === 0) {
+    status = "NF não localizada";
+  } else if (valor_creditado_cent === valor_debitado_cent && valor_creditado_cent > 0) {
+    status = "Conciliado";
+  } else if (!nf && valor_creditado_cent === 0 && valor_debitado_cent > 0) {
+    // Mantido: sem NF e só débito -> Não Conciliado
+    status = "Não Conciliado";
+  } else if (valor_debitado_cent === 0 && valor_creditado_cent > 0) {
+    // Só crédito -> regras novas
+    if (conta_codigo_num === 1) status = "Recebimento a Maior";
+    else if (conta_codigo_num === 2) status = "NF em Aberto";
+    else status = "Crédito não classificado";
+  } else if (valor_creditado_cent === 0 && valor_debitado_cent > 0) {
+    // Só débito -> regras novas
+    if (conta_codigo_num === 1) status = "NF em Aberto";
+    else if (conta_codigo_num === 2) status = "Pagamento a Maior";
+    else status = "Débito não classificado";
+  } else {
+    // Há crédito e débito mas não fecham
+    status = "Conciliação Divergente";
+  }
+
+  const historicoRef = entradas[0]?.historico || pagamentos[0]?.historico || "";
+  let dataNF = extractDate(historicoRef);
+  if (!dataNF) {
+    const dataFallback = entradas[0]?.data_original || pagamentos[0]?.data_original || null;
+    dataNF = fromAnyToDDMMYY(dataFallback);
+  }
+
+  const cnpj = entradas[0]?.cnpj || pagamentos[0]?.cnpj || null;
+  const empresa = entradas[0]?.nome || pagamentos[0]?.nome || null;
+
+  const todos = [...entradas, ...pagamentos]
+    .filter(x => typeof x.saldoExCent === "number" && !Number.isNaN(x.saldoExCent));
+
+  let saldo_exercicio_cent = null;
+  if (todos.length) {
+    const ultimo = todos.reduce((a, b) => (a.__idx > b.__idx ? a : b));
+    saldo_exercicio_cent = ultimo.saldoExCent;
+  }
+
+  const conta_numero    = firstNonEmpty(todosConta.map(x => x.conta_numero));
+  const conta_codigo    = firstNonEmpty(todosConta.map(x => x.conta_codigo));
+  const conta_descricao = firstNonEmpty(todosConta.map(x => x.conta_descricao));
+
+  const detalhes_credito = entradas.map(e => ({
+    numero: e.lancamento_credito ?? null,
+    data: extractDate(e.historico) || fromAnyToDDMMYY(e.data_original) || null,
+    valor: fromCentavos(e.valorCent),
+    historico: e.historico ?? null,
+  }));
+
+  const detalhes_debito = pagamentos.map(p => ({
+    numero: p.lancamento_debito ?? null,
+    data: extractDate(p.historico) || fromAnyToDDMMYY(p.data_original) || null,
+    valor: fromCentavos(p.valorCent),
+    historico: p.historico ?? null,
+  }));
+
+  conciliacoes.push({
+    nf,
+    data: dataNF || null,
+    cnpj,
+    empresa,
+
+    conta_numero: conta_numero ?? null,
+    conta_codigo: conta_codigo ?? null,
+    conta_descricao: conta_descricao ?? null,
+    conta_codigo_primeiro: conta_codigo_primeiro ?? null,
+
+    valor_creditado: fromCentavos(valor_creditado_cent),
+    valor_debitado: fromCentavos(valor_debitado_cent),
+
+    detalhes_credito,
+    detalhes_debito,
+
+    status,
+
+    lancamento_credito: entradas.map(e => e.lancamento_credito),
+    lancamento_debito: pagamentos.map(p => p.lancamento_debito),
+    historico_credito: entradas.map(e => e.historico ?? null),
+    historico_debito: pagamentos.map(p => p.historico ?? null),
+    historico_origem: historicoRef || null,
+
+    saldo_exercicio: saldo_exercicio_cent != null ? fromCentavos(saldo_exercicio_cent) : null,
+  });
+}
+
+return conciliacoes.map(c => ({ json: c }));
+*/

@@ -1,0 +1,461 @@
+/* Reset elegante */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* =========================
+   Tema / Tokens
+   ========================= */
+:root {
+  --bg0: #0f172a; /* slate-900 */
+  --bg1: #111827; /* gray-900 */
+  --card: #0b1220cc; /* vidro escuro */
+  --card-light: #ffffffcc; /* vidro claro */
+  --ring: #60a5fa;
+  --accent: #7c3aed;
+  --ok: #16a34a;
+  --ok-600: #15803d;
+  --text: #0b1220;
+  --muted: #6b7280;
+  --shadow: 0 10px 30px rgba(2, 6, 23, 0.35);
+
+  /* >>> NOVO: controles de vidro */
+  --glass-blur: 14px;
+  --glass-sat: 160%;
+  --glass-alpha: 0.66; /* opacidade base para áreas claras */
+  --glass-alpha-dark: 0.38; /* opacidade base para dark */
+  --glass-stroke: 255 255 255; /* cor da borda interna (RGB) */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+  }
+}
+
+/* =========================
+   Fundo com gradiente sutil
+   ========================= */
+.page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+      1200px 800px at 10% -10%,
+      rgba(124, 58, 237, 0.25),
+      transparent 60%
+    ),
+    radial-gradient(
+      1000px 900px at 110% 10%,
+      rgba(96, 165, 250, 0.2),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #f8fafc, #eef2ff 30%, #f8fafc);
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    background: radial-gradient(
+        1200px 800px at 10% -10%,
+        rgba(124, 58, 237, 0.15),
+        transparent 60%
+      ),
+      radial-gradient(
+        1000px 900px at 110% 10%,
+        rgba(96, 165, 250, 0.12),
+        transparent 60%
+      ),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+  }
+}
+
+/* =========================
+   Cartão (Glassmorphism+)
+   ========================= */
+.card {
+  width: min(560px, 92vw);
+  padding: 28px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, var(--glass-alpha)); /* claro */
+  color: var(--text);
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  box-shadow: var(--shadow);
+
+  /* vidro */
+  backdrop-filter: saturate(var(--glass-sat)) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(var(--glass-sat)) blur(var(--glass-blur));
+
+  position: relative;
+  overflow: clip;
+}
+
+/* >>> NOVO: brilho sutil superior */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.28),
+    transparent 55%
+  );
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+/* >>> NOVO: borda interna (stroke) de vidro */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* “inner stroke” translúcido */
+  box-shadow: inset 0 0 0 1px rgba(var(--glass-stroke), 0.35);
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: rgba(11, 18, 32, var(--glass-alpha-dark));
+    border-color: rgba(148, 163, 184, 0.15);
+  }
+}
+
+/* >>> NOVO: variações rápidas */
+.card--soft {
+  --glass-blur: 10px;
+  --glass-alpha: 0.58;
+  --glass-alpha-dark: 0.32;
+}
+.card--strong {
+  --glass-blur: 20px;
+  --glass-alpha: 0.78;
+  --glass-alpha-dark: 0.46;
+}
+
+/* =========================
+   Títulos / textos
+   ========================= */
+
+p.lead {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: clamp(14px, 2.2vw, 16px);
+}
+
+/* >>> NOVO: título secundário (Conciliado contábil) */
+.card > h1 {
+  margin: -4px 0 12px;
+  font-size: clamp(px, 2.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* =========================
+   Dropzone (upload)
+   ========================= */
+.dropzone {
+  position: relative;
+  border: 1.5px dashed rgba(148, 163, 184, 0.6);
+  border-radius: 16px;
+  padding: 28px;
+  text-align: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease,
+    transform 0.2s ease, box-shadow 0.2s ease;
+  background: rgba(255, 255, 255, 0.55);
+  display: block;
+  cursor: pointer;
+  /* >>> NOVO: efeito vidro mais leve dentro do cartão */
+  backdrop-filter: saturate(140%) blur(calc(var(--glass-blur) * 0.6));
+  -webkit-backdrop-filter: saturate(140%) blur(calc(var(--glass-blur) * 0.6));
+}
+
+@media (prefers-color-scheme: dark) {
+  .dropzone {
+    background: rgba(15, 23, 42, 0.35);
+  }
+}
+
+.dropzone:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.dropzone:focus-within {
+  outline: 2px solid transparent;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.25);
+}
+
+/* >>> NOVO: estado “arrastando” (adicione .is-dragover via JS) */
+.dropzone.is-dragover {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  transform: translateY(-2px);
+}
+
+.dz-title {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.dz-hint {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* --- Correção robusta para input file --- */
+input[type="file"] {
+  position: static;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  cursor: auto;
+}
+
+.dropzone input#file[type="file"] {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0.001 !important;
+  cursor: pointer !important;
+  display: block !important;
+  z-index: 2;
+}
+
+.dropzone *:not(input) {
+  pointer-events: none;
+}
+
+.dropzone:has(input:focus-visible) {
+  outline: 2px solid transparent;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.25);
+}
+/* --- fim da correção --- */
+
+/* =========================
+   Botões
+   ========================= */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* primário com leve vidro para combinar com o cartão */
+.btn-primary {
+  background: linear-gradient(90deg, var(--ok), var(--ok-600));
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, 0.35);
+}
+.btn-primary:hover {
+  filter: brightness(1.05);
+}
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* >>> NOVO: outline em vidro */
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.btn-outline:hover {
+  border-color: var(--ring);
+}
+@media (prefers-color-scheme: dark) {
+  .btn-outline {
+    background: rgba(15, 23, 42, 0.3);
+    border-color: rgba(148, 163, 184, 0.8);
+    color: var(--text);
+  }
+}
+
+/* =========================
+   Linha de status / rodapé
+   ========================= */
+.file-row {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.foot {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* =========================
+   Avisos de upload (.xlsx, 1 arquivo)
+   ========================= */
+.upload-hint {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* chips/badges */
+.upload-hint .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.upload-hint .chip small {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+@media (prefers-color-scheme: dark) {
+  .upload-hint .chip {
+    background: rgba(15, 23, 42, 0.35);
+    border-color: rgba(148, 163, 184, 0.6);
+  }
+}
+
+/* ícones simples via pseudo-elementos */
+.chip--xlsx::before {
+  content: "📄";
+  font-size: 14px;
+  line-height: 1;
+}
+.chip--single::before {
+  content: "➕";
+  transform: rotate(45deg);
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* reforço visual para erro */
+.dropzone.is-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+/* microajustes */
+.file-row {
+  margin-top: 12px;
+}
+.actions {
+  margin-top: 18px;
+}
+.foot {
+  margin-top: 16px;
+}
+
+/* =========================
+   Acessibilidade / Preferências
+   ========================= */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 1px, 1px);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .card {
+    background: #fffffff2;
+    border-color: rgba(2, 6, 23, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    .card {
+      background: #0b1220f2;
+      border-color: rgba(148, 163, 184, 0.22);
+    }
+  }
+  .dropzone {
+    background: #ffffffcc;
+  }
+  @media (prefers-color-scheme: dark) {
+    .dropzone {
+      background: #0f172ab3;
+    }
+  }
+  .btn-outline {
+    background: #ffffffdd;
+  }
+  @media (prefers-color-scheme: dark) {
+    .btn-outline {
+      background: #0f172acc;
+    }
+  }
+}

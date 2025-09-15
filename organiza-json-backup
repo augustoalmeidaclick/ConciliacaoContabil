@@ -1,0 +1,302 @@
+// ========= Config =========
+const INCLUDE_DEBUG = false;  // coloque false quando terminar de validar
+
+// ========= Utils =========
+const NORM = s => String(s ?? '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+function excelDateToJSDate(serial) {
+  if (!serial || typeof serial !== 'number') return null;
+  const utc_days = Math.floor(serial - 25569);
+  const date_info = new Date(utc_days * 86400 * 1000);
+  return date_info.toISOString().split('T')[0];
+}
+
+const isNumeric = v => typeof v === 'number' && !Number.isNaN(v);
+const isIntLike = v => Number.isInteger(v);
+const isExcelDate = v => typeof v === 'number' && v > 40000 && v < 60000;
+
+// Pega sufixo numérico de "__EMPTY_15" => 15
+function emptyIndex(key) {
+  if (!key || typeof key !== 'string') return null;
+  const m = key.match(/__EMPTY_(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+function makeEmptyKey(idx) { return `__EMPTY_${idx}`; }
+
+// Mede "qualidade" da coluna nos dados (após o cabeçalho)
+function columnScore(rows, key, startIdx, expect) {
+  if (!key) return { nonNull: 0, score: 0 };
+  let nonNull = 0, good = 0;
+  for (let i = startIdx + 1; i < rows.length; i++) {
+    const v = rows[i][key];
+    if (v === undefined || v === null || v === '') continue;
+    nonNull++;
+    if (expect === 'date' && isExcelDate(v)) good++;
+    else if (expect === 'int' && isIntLike(v)) good++;
+    else if (expect === 'number' && isNumeric(v)) good++;
+    else if (expect === 'text' && typeof v === 'string') good++;
+  }
+  return { nonNull, score: nonNull ? good / nonNull : 0 };
+}
+
+// ✅ Versão corrigida: só ±1, evita colunas proibidas e exige “melhoria” clara
+function coerceToDataKey(rows, key, headerIdx, expect, forbidden = []) {
+  if (!key) return null;
+  const base = columnScore(rows, key, headerIdx, expect);
+
+  // Se já tem um mínimo de preenchimento, só aceita troca com melhoria grande
+  const MIN_BASE_NONNULL = 2;
+  const LIFT_NONNULL = 2.0;    // precisa ter pelo menos 2x mais preenchimento
+  const LIFT_SCORE   = 0.25;   // e +25% de qualidade
+
+  let bestKey = key, best = base;
+
+  const idx = emptyIndex(key);
+  const neighs = [];
+  if (idx !== null) {
+    // 🔒 só ±1
+    neighs.push(makeEmptyKey(idx + 1), makeEmptyKey(idx - 1));
+  }
+  // Caso recorrente: “Número” nos dados aparece em __EMPTY_3
+  if (expect === 'int') neighs.push('__EMPTY_3');
+
+  for (const k of neighs) {
+    if (!k) continue;
+    if (forbidden.includes(k)) continue; // não pode colidir com campos já mapeados
+
+    const s = columnScore(rows, k, headerIdx, expect);
+
+    // Se a base já é “razoável”, exigir ganho grande para trocar
+    const better = (base.nonNull >= MIN_BASE_NONNULL)
+      ? (s.nonNull >= base.nonNull * LIFT_NONNULL && s.score >= base.score + LIFT_SCORE)
+      : // Base fraca: aceitar troca moderada, ainda evitando proibidas
+        (s.nonNull > base.nonNull && s.score >= base.score);
+
+    if (better) { best = s; bestKey = k; }
+  }
+  return bestKey;
+}
+
+// ========= Header mapping =========
+const LABEL_TO_FIELD = new Map([
+  // data
+  ['data','data'], ['data competencia','data'], ['competencia','data'],
+  // numero
+  ['numero','numero'], ['número','numero'], ['nº','numero'], ['no','numero'],
+  // historico
+  ['historico','historico'], ['histórico','historico'],
+  ['contrapartida/historico','historico'], ['contrapartida/histórico','historico'],
+  // conta-part
+  ['cta.c.part.','conta_part'], ['cta.c.part','conta_part'],
+  ['conta c.part.','conta_part'], ['conta c part','conta_part'],
+  ['conta-part','conta_part'], ['conta part','conta_part'], ['conta:','conta_part'], ['conta','conta_part'],
+  // debito
+  ['debito','debito'], ['débito','debito'],
+  // credito
+  ['credito','credito'], ['crédito','credito'],
+  // saldo
+  ['saldo','saldo'],
+  // saldo-exercicio
+  ['saldo-exercicio','saldo_exercicio'], ['saldo-exercício','saldo_exercicio'],
+  ['saldo do exercicio','saldo_exercicio'], ['saldo do exercício','saldo_exercicio'],
+]);
+
+function buildMapFromHeaderRow(rowObj) {
+  const labelToKey = {};
+  for (const [key, val] of Object.entries(rowObj)) {
+    if (typeof val === 'string' && val.trim()) {
+      labelToKey[NORM(val)] = key;
+    }
+  }
+  const map = {};
+  for (const [labelNorm, field] of LABEL_TO_FIELD.entries()) {
+    if (map[field]) continue;
+    if (labelToKey[labelNorm]) map[field] = labelToKey[labelNorm];
+  }
+  // Caso comum: "Empresa:" == "Data" no header
+  if (!map.data && rowObj['Empresa:'] && NORM(rowObj['Empresa:']) === 'data') {
+    map.data = 'Empresa:';
+  }
+  const ok = !!(map.historico && (map.debito || map.credito || map.saldo || map.saldo_exercicio));
+  return ok ? map : null;
+}
+
+function findHeaderRowIndex(rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const txts = Object.values(r).filter(v => typeof v === 'string').map(NORM);
+    if (txts.includes('historico') || txts.includes('histórico') || txts.includes('contrapartida/historico') || txts.includes('contrapartida/histórico')) {
+      if (txts.some(t => ['debito','débito','credito','crédito','saldo','saldo-exercicio','saldo-exercício','data','numero','número','cta.c.part.','conta-part','conta part','conta:'].includes(t))) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+// ========= Main =========
+try {
+  const rows = (items ?? []).map(i => i.json ?? i);
+  const out = [];
+  let empresa = null, cnpj = null, periodo = null;
+  // +++ NOVO:
+  let conta_num = null, conta_cod = null, conta_desc = null;
+
+  // 1) acha header e mapeia
+  const headerIdx = findHeaderRowIndex(rows);
+  let MAP = headerIdx >= 0 ? buildMapFromHeaderRow(rows[headerIdx]) : null;
+
+  // fallback mínimo (se não achou cabeçalho)
+  if (!MAP) {
+    MAP = {
+      data: 'Empresa:',
+      numero: '__EMPTY_3',
+      historico: '__EMPTY_8',
+      conta_part: '__EMPTY_16',
+      debito: '__EMPTY_18',
+      credito: '__EMPTY_20',
+      saldo: '__EMPTY_22',
+      saldo_exercicio: '__EMPTY_27',
+    };
+  }
+
+  // 2) Ajuste de colunas para onde os DADOS realmente estão (com bloqueios)
+  let ref = { ...MAP };
+
+  MAP.numero = coerceToDataKey(rows, ref.numero, headerIdx, 'int', [ref.historico, ref.conta_part, ref.debito, ref.credito, ref.saldo, ref.saldo_exercicio]) || ref.numero;
+  MAP.historico = coerceToDataKey(rows, ref.historico, headerIdx, 'text', [ref.numero, ref.conta_part, ref.debito, ref.credito, ref.saldo, ref.saldo_exercicio]) || ref.historico;
+
+  if (ref.conta_part)
+    MAP.conta_part = coerceToDataKey(rows, ref.conta_part, headerIdx, 'int', [MAP.numero, MAP.historico]) || ref.conta_part;
+
+  if (ref.debito)
+    MAP.debito = coerceToDataKey(rows, ref.debito, headerIdx, 'number', [ref.saldo_exercicio, ref.saldo, ref.credito, ref.conta_part]) || ref.debito;
+
+  if (ref.credito)
+    MAP.credito = coerceToDataKey(rows, ref.credito, headerIdx, 'number', [ref.saldo, ref.debito, ref.conta_part]) || ref.credito;
+
+  if (ref.saldo)
+    MAP.saldo = coerceToDataKey(rows, ref.saldo, headerIdx, 'number', [ref.debito, ref.credito, ref.conta_part]) || ref.saldo;
+
+  if (ref.saldo_exercicio)
+    MAP.saldo_exercicio = coerceToDataKey(rows, ref.saldo_exercicio, headerIdx, 'number', [ref.debito, ref.credito, ref.saldo, ref.conta_part]) || ref.saldo_exercicio;
+
+  // 3) Guardas anti-colisão finais
+  if (MAP.credito && MAP.saldo && MAP.credito === MAP.saldo) MAP.credito = ref.credito || null;
+  if (MAP.debito && MAP.saldo_exercicio && MAP.debito === MAP.saldo_exercicio) MAP.debito = ref.debito || null;
+
+  const get = (row, key) => (key ? (row[key] ?? null) : null);
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+
+    // pular a linha de cabeçalho
+    if (i === headerIdx) continue;
+
+    // Metadados: CNPJ
+    if (row['Empresa:'] === 'C.N.P.J.:') {
+      const keyEmpresa = Object.keys(row).find(k => !['Empresa:', 'Folha:', '0001'].includes(k));
+      if (keyEmpresa) {
+        empresa = keyEmpresa;
+        cnpj = row[empresa];
+        out.push({ empresa, cnpj, periodo: null });
+      }
+      continue;
+    }
+
+    // Metadados: Período
+    if (row['Empresa:'] === 'Período:') {
+      if (empresa) {
+        periodo = row[empresa];
+        if (out.length) out[out.length - 1].periodo = periodo;
+      }
+      continue;
+    }
+
+    // +++ NOVO: Capturar linha "Conta:" e ignorar como movimento
+    if (row['Empresa:'] === 'Conta:') {
+      conta_num  = row['__EMPTY_1']  ?? null;
+      conta_cod  = row['__EMPTY_7']  ?? null;
+      // Fallback para planilhas onde a descrição veio em __EMPTY_12
+      conta_desc = row['__EMPTY_13'] ?? row['__EMPTY_12'] ?? null;
+      continue;
+    }
+
+    // SALDO ANTERIOR
+    const histValRaw = get(row, MAP.historico);
+    const histNorm = NORM(histValRaw);
+    if (histNorm === 'saldo anterior') {
+      out.push({
+        empresa, cnpj, periodo,
+        // +++ NOVO:
+        conta_numero: conta_num ?? null,
+        conta_codigo: conta_cod ?? null,
+        conta_descricao: conta_desc ?? null,
+
+        historico: 'SALDO ANTERIOR',
+        saldo_exercicio: get(row, MAP.saldo_exercicio) ?? null,
+      });
+      continue;
+    }
+
+    // Ignora subtotais
+    if (NORM(row['__EMPTY_11']) === 'total da conta:') continue;
+
+    // Linhas de movimento (tem histórico OU conta_part)
+    const hasHistorico = histValRaw != null && histValRaw !== '';
+    const hasConta = MAP.conta_part && row[MAP.conta_part] != null && row[MAP.conta_part] !== '';
+
+    if (hasHistorico || hasConta) {
+      const rawDate = get(row, MAP.data);
+
+      // Número: usa mapeado; se vier vazio e existir __EMPTY_3, tenta __EMPTY_3
+      let numero = get(row, MAP.numero);
+      if ((numero === null || numero === undefined || numero === '') && row['__EMPTY_3'] != null) {
+        numero = row['__EMPTY_3'];
+      }
+
+      // Valores
+      let debito = MAP.debito ? get(row, MAP.debito) : null;
+      let credito = MAP.credito ? get(row, MAP.credito) : null;
+      const saldo = MAP.saldo ? get(row, MAP.saldo) : null;
+      const saldo_exercicio = MAP.saldo_exercicio ? get(row, MAP.saldo_exercicio) : null;
+
+      // Garantias finais de não-colisão por linha
+      if (MAP.credito && MAP.saldo && MAP.credito === MAP.saldo) credito = null;
+      if (MAP.debito && MAP.saldo_exercicio && MAP.debito === MAP.saldo_exercicio) debito = null;
+
+      out.push({
+        empresa,
+        cnpj,
+        periodo,
+        // +++ NOVO:
+        conta_numero: conta_num ?? null,
+        conta_codigo: conta_cod ?? null,
+        conta_descricao: conta_desc ?? null,
+
+        data: excelDateToJSDate(rawDate),
+        numero: numero ?? null,
+        historico: hasHistorico ? histValRaw : null,
+        conta_part: hasConta ? row[MAP.conta_part] : null,
+        debito: debito ?? null,
+        credito: credito ?? null,
+        saldo: saldo ?? null,
+        saldo_exercicio: saldo_exercicio ?? null,
+      });
+    }
+  }
+
+  if (INCLUDE_DEBUG) {
+    const debug = { _diagnostic: { headerIndex: headerIdx, chosen_map: MAP } };
+    return [{ json: debug }, ...out.map(e => ({ json: e }))];
+  }
+
+  if (out.length === 0) return [{ json: { _warning: 'Nenhuma linha válida encontrada.' } }];
+  return out.map(e => ({ json: e }));
+
+} catch (e) {
+  return [{ json: { _error: true, message: e.message, stack: e.stack?.toString() ?? null } }];
+}
