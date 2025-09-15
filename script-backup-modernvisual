@@ -10,7 +10,9 @@ function escapeHtml(str) {
 }
 
 function norm(s) {
-  const base = String(s ?? "").toLowerCase().normalize("NFD");
+  const base = String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD");
   let noDia;
   try {
     noDia = base.replace(/\p{Diacritic}/gu, "");
@@ -72,9 +74,9 @@ function parseNumber(v) {
     if (isParenNeg) s = s.slice(1, -1);
 
     s = s
-      .replace(/[^\d,.-]/g, "")           // mantém dígitos, ., , e sinais
-      .replace(/\.(?=\d{3}(\D|$))/g, "")  // remove separador de milhar "."
-      .replace(",", ".");                 // vírgula decimal -> ponto
+      .replace(/[^\d,.-]/g, "") // mantém dígitos, ., , e sinais
+      .replace(/\.(?=\d{3}(\D|$))/g, "") // remove separador de milhar "."
+      .replace(",", "."); // vírgula decimal -> ponto
 
     let n = Number(s);
     if (!Number.isFinite(n)) return 0;
@@ -93,7 +95,7 @@ const brlFmt = new Intl.NumberFormat("pt-BR", {
 });
 
 const formatBRL = (n) => brlFmt.format(parseNumber(n));
-const toCents   = (n) => Math.round(parseNumber(n) * 100);
+const toCents = (n) => Math.round(parseNumber(n) * 100);
 const fromCents = (c) => c / 100;
 
 // ===================== Status & Cores =====================
@@ -101,30 +103,31 @@ const fromCents = (c) => c / 100;
 function isConciliadoLike(status) {
   const s = norm(status);
   if (s.includes("nao conciliado")) return false;
-  const isConciliadoExato = /\bconciliado\b/.test(s) && !s.includes("parcial") && !s.includes("diverg");
+  const isConciliadoExato =
+    /\bconciliado\b/.test(s) && !s.includes("parcial") && !s.includes("diverg");
   const isPerfeita = s.includes("perfeita");
   return isConciliadoExato || isPerfeita;
 }
 
 function statusBg(status) {
   const s = norm(status);
-  if (s.includes("nf em aberto")) return "#e3f2fd";        // azul claro
+  if (s.includes("nf em aberto")) return "#e3f2fd"; // azul claro
   if (s.includes("recebimento a maior")) return "#e0f7fa"; // ciano claro
-  if (s.includes("pagamento a maior")) return "#f3e5f5";   // roxo claro
-  if (s.includes("nao conciliado")) return "#ffebee";      // vermelho claro
-  if (isConciliadoLike(s)) return "#e8f5e9";               // verde claro
-  if (/\bparcial\w*|\bdiverg\w*/.test(s)) return "#fff8e1";// amarelo claro
+  if (s.includes("pagamento a maior")) return "#f3e5f5"; // roxo claro
+  if (s.includes("nao conciliado")) return "#ffebee"; // vermelho claro
+  if (isConciliadoLike(s)) return "#e8f5e9"; // verde claro
+  if (/\bparcial\w*|\bdiverg\w*/.test(s)) return "#fff8e1"; // amarelo claro
   return "#f5f5f5"; // neutro
 }
 
 function statusPillColor(status) {
   const s = norm(status);
-  if (s.includes("nf em aberto")) return "#1565c0";        // azul
+  if (s.includes("nf em aberto")) return "#1565c0"; // azul
   if (s.includes("recebimento a maior")) return "#00838f"; // teal
-  if (s.includes("pagamento a maior")) return "#6a1b9a";   // roxo
-  if (s.includes("nao conciliado")) return "#c62828";      // vermelho
-  if (isConciliadoLike(s)) return "#2e7d32";               // verde
-  if (/\bparcial\w*|\bdiverg\w*/.test(s)) return "#b7791f";// amarelo escuro
+  if (s.includes("pagamento a maior")) return "#6a1b9a"; // roxo
+  if (s.includes("nao conciliado")) return "#c62828"; // vermelho
+  if (isConciliadoLike(s)) return "#2e7d32"; // verde
+  if (/\bparcial\w*|\bdiverg\w*/.test(s)) return "#b7791f"; // amarelo escuro
   return "#333";
 }
 
@@ -146,7 +149,11 @@ function statusBucketLabel(statusRaw) {
 
   if (isConciliadoLike(s)) return "Conciliado";
   // Variações de "parcial"/"diverg*"
-  if (/\bconciliacao\s+diverg\w*/.test(s) || /\bparcial\w*/.test(s) || /\bdiverg\w*/.test(s)) {
+  if (
+    /\bconciliacao\s+diverg\w*/.test(s) ||
+    /\bparcial\w*/.test(s) ||
+    /\bdiverg\w*/.test(s)
+  ) {
     return "Conciliação Divergente";
   }
   if (/\bnf\s+em\s+aberto\b/.test(s)) return "NF em Aberto";
@@ -162,7 +169,11 @@ function statusBucketLabel(statusRaw) {
 function toArrayLaunch(v) {
   if (Array.isArray(v)) return v;
   if (v == null) return [];
-  if (typeof v === "string") return v.split(",").map(s => s.trim()).filter(Boolean);
+  if (typeof v === "string")
+    return v
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   return [String(v)];
 }
 
@@ -172,13 +183,35 @@ function isConfigItem(obj) {
 
   if (Array.isArray(obj.data)) return false;
 
-  const configKeys = new Set(['sortorder', 'order', 'sortfield', 'field', 'sortby', 'showdetails']);
-  const keys = Object.keys(obj).map(k => k.toLowerCase());
-  const hasAnyConfig = keys.some(k => configKeys.has(k));
+  const configKeys = new Set([
+    "sortorder",
+    "order",
+    "sortfield",
+    "field",
+    "sortby",
+    "showdetails",
+  ]);
+  const keys = Object.keys(obj).map((k) => k.toLowerCase());
+  const hasAnyConfig = keys.some((k) => configKeys.has(k));
   if (!hasAnyConfig) return false;
 
-  const rowHints = ['nf','status','valor_creditado','valor debitado','valor_debitado','credito','debito','data','date','dt','dt_emissao','emissao','cnpj','empresa'];
-  const hasRowHints = keys.some(k => rowHints.includes(k));
+  const rowHints = [
+    "nf",
+    "status",
+    "valor_creditado",
+    "valor debitado",
+    "valor_debitado",
+    "credito",
+    "debito",
+    "data",
+    "date",
+    "dt",
+    "dt_emissao",
+    "emissao",
+    "cnpj",
+    "empresa",
+  ];
+  const hasRowHints = keys.some((k) => rowHints.includes(k));
   return !hasRowHints;
 }
 
@@ -194,13 +227,13 @@ function normalizeRows(items) {
     }
 
     // Objeto em it.json
-    if (it?.json && typeof it.json === 'object') {
+    if (it?.json && typeof it.json === "object") {
       if (!isConfigItem(it.json)) rows.push(it.json);
       continue;
     }
 
     // Objeto "cru"
-    if (it && typeof it === 'object') {
+    if (it && typeof it === "object") {
       rows.push(it);
     }
   }
@@ -208,18 +241,20 @@ function normalizeRows(items) {
 }
 
 function normalizeKeyName(k) {
-  const base = String(k ?? '').toLowerCase().normalize('NFD');
+  const base = String(k ?? "")
+    .toLowerCase()
+    .normalize("NFD");
   let noDia;
   try {
-    noDia = base.replace(/\p{Diacritic}/gu, '');
+    noDia = base.replace(/\p{Diacritic}/gu, "");
   } catch {
-    noDia = base.replace(/[\u0300-\u036f]/g, '');
+    noDia = base.replace(/[\u0300-\u036f]/g, "");
   }
-  return noDia.replace(/[^a-z0-9]/g, '');
+  return noDia.replace(/[^a-z0-9]/g, "");
 }
 
 function pickFlexibleField(obj, candidateNames) {
-  if (!obj || typeof obj !== 'object') return undefined;
+  if (!obj || typeof obj !== "object") return undefined;
   const map = new Map();
   for (const key of Object.keys(obj)) {
     map.set(normalizeKeyName(key), key);
@@ -227,32 +262,50 @@ function pickFlexibleField(obj, candidateNames) {
   const targets = candidateNames.map(normalizeKeyName);
 
   for (const t of targets) if (map.has(t)) return obj[map.get(t)];
-  for (const t of targets) for (const [nk, orig] of map.entries()) if (nk.startsWith(t)) return obj[orig];
-  for (const t of targets) for (const [nk, orig] of map.entries()) if (nk.includes(t)) return obj[orig];
+  for (const t of targets)
+    for (const [nk, orig] of map.entries())
+      if (nk.startsWith(t)) return obj[orig];
+  for (const t of targets)
+    for (const [nk, orig] of map.entries())
+      if (nk.includes(t)) return obj[orig];
 
   return undefined;
 }
 
 function readMoneyFieldFlexible(obj, candidateNames) {
   const v = pickFlexibleField(obj, candidateNames);
-  if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) return null;
+  if (
+    v === undefined ||
+    v === null ||
+    (typeof v === "string" && v.trim() === "")
+  )
+    return null;
   return toCents(v);
 }
 
 function pickDateCell(r, preferredField) {
   return preferredField && r?.[preferredField] != null
     ? r[preferredField]
-    : (r.data ?? r.date ?? r.dt ?? r.data_nf ?? r.dt_emissao ?? r.emissao ?? r.emissão ?? r.data_lancamento ?? null);
+    : r.data ??
+        r.date ??
+        r.dt ??
+        r.data_nf ??
+        r.dt_emissao ??
+        r.emissao ??
+        r.emissão ??
+        r.data_lancamento ??
+        null;
 }
 
 // ===================== Config =====================
 
 function getSortConfig(items) {
   const cfg = items?.[0]?.json || {};
-  const orderRaw = (cfg.sortOrder || cfg.order || '').toString().toLowerCase();
-  const sortOrder = (orderRaw === 'desc' || orderRaw === 'descending') ? 'desc' : 'asc';
+  const orderRaw = (cfg.sortOrder || cfg.order || "").toString().toLowerCase();
+  const sortOrder =
+    orderRaw === "desc" || orderRaw === "descending" ? "desc" : "asc";
   const sortField = cfg.sortField || cfg.field || null;
-  const sortBy = (cfg.sortBy || 'status+date').toLowerCase();
+  const sortBy = (cfg.sortBy || "status+date").toLowerCase();
   const showDetails = cfg.showDetails !== false; // padrão: true
   return { sortOrder, sortField, sortBy, showDetails };
 }
@@ -261,20 +314,29 @@ function getSortConfig(items) {
 
 function deriveHistory(r) {
   const origem = r?.historico_origem;
-  let full = '';
+  let full = "";
   if (origem) {
     full = String(origem);
   } else {
-    const hc = Array.isArray(r?.historico_credito) ? r.historico_credito : (r?.historico_credito ? [r.historico_credito] : []);
-    const hd = Array.isArray(r?.historico_debito) ? r.historico_debito : (r?.historico_debito ? [r.historico_debito] : []);
+    const hc = Array.isArray(r?.historico_credito)
+      ? r.historico_credito
+      : r?.historico_credito
+      ? [r.historico_credito]
+      : [];
+    const hd = Array.isArray(r?.historico_debito)
+      ? r.historico_debito
+      : r?.historico_debito
+      ? [r.historico_debito]
+      : [];
     const uniq = [...new Set([...hc, ...hd].filter(Boolean).map(String))];
-    full = uniq.join(' | ');
+    full = uniq.join(" | ");
   }
   const trimmed = full.trim();
-  if (!trimmed) return { display: '—', title: '' };
+  if (!trimmed) return { display: "—", title: "" };
 
   const maxLen = 120;
-  const display = trimmed.length > maxLen ? trimmed.slice(0, maxLen) + '…' : trimmed;
+  const display =
+    trimmed.length > maxLen ? trimmed.slice(0, maxLen) + "…" : trimmed;
   return { display: escapeHtml(display), title: escapeHtml(trimmed) };
 }
 
@@ -282,43 +344,79 @@ function deriveHistory(r) {
 
 function renderTotalsCards(totals, totalGeralCredito, totalGeralDebito) {
   const ORDER = [
-    'Conciliado',
-    'Conciliação Divergente',
-    'NF em Aberto',
-    'Recebimento a Maior',
-    'Pagamento a Maior',
-    'Não Conciliado',
-    'Não Encontrado/Outros',
+    "Conciliado",
+    "Conciliação Divergente",
+    "NF em Aberto",
+    "Recebimento a Maior",
+    "Pagamento a Maior",
+    "Não Conciliado",
+    "Não Encontrado/Outros",
   ];
 
   const STYLE = {
-    'Conciliado':              { bg:'#e8f5e9', border:'rgba(46,125,50,.25)', title:'#1f3b2a' },
-    'Conciliação Divergente':  { bg:'#fff8e1', border:'rgba(249,168,37,.25)', title:'#4a3a0a' },
-    'NF em Aberto':            { bg:'#e3f2fd', border:'rgba(21,101,192,.25)', title:'#102a43' },
-    'Recebimento a Maior':     { bg:'#e0f7fa', border:'rgba(0,131,143,.25)',  title:'#0a2a2e' },
-    'Pagamento a Maior':       { bg:'#f3e5f5', border:'rgba(106,27,154,.25)', title:'#2e1140' },
-    'Não Conciliado':          { bg:'#ffebee', border:'rgba(198,40,40,.25)',  title:'#411316' },
-    'Não Encontrado/Outros':   { bg:'#eeeeee', border:'#d1d5db',              title:'#111827' },
+    Conciliado: {
+      bg: "#e8f5e9",
+      border: "rgba(46,125,50,.25)",
+      title: "#1f3b2a",
+    },
+    "Conciliação Divergente": {
+      bg: "#fff8e1",
+      border: "rgba(249,168,37,.25)",
+      title: "#4a3a0a",
+    },
+    "NF em Aberto": {
+      bg: "#e3f2fd",
+      border: "rgba(21,101,192,.25)",
+      title: "#102a43",
+    },
+    "Recebimento a Maior": {
+      bg: "#e0f7fa",
+      border: "rgba(0,131,143,.25)",
+      title: "#0a2a2e",
+    },
+    "Pagamento a Maior": {
+      bg: "#f3e5f5",
+      border: "rgba(106,27,154,.25)",
+      title: "#2e1140",
+    },
+    "Não Conciliado": {
+      bg: "#ffebee",
+      border: "rgba(198,40,40,.25)",
+      title: "#411316",
+    },
+    "Não Encontrado/Outros": {
+      bg: "#eeeeee",
+      border: "#d1d5db",
+      title: "#111827",
+    },
   };
 
-  const cardsHtml = ORDER
-    .filter(lbl => (totals[lbl]?.count || 0) > 0) // esconde vazios
-    .map(lbl => {
+  const cardsHtml = ORDER.filter((lbl) => (totals[lbl]?.count || 0) > 0) // esconde vazios
+    .map((lbl) => {
       const t = totals[lbl];
       const st = STYLE[lbl];
       return `
-  <div class="card-mini" style="background:${st.bg};border:1px solid ${st.border}">
+  <div class="card-mini" style="background:${st.bg};border:1px solid ${
+        st.border
+      }">
     <div class="mini-title" style="color:${st.title}">${lbl}</div>
     <div class="mini-count" style="color:#0f172a">${t.count} lanç.</div>
-    <div class="mini-sub" style="color:#1f2937">Crédito ${formatBRL(fromCents(t.credito))} · Débito ${formatBRL(fromCents(t.debito))}</div>
+    <div class="mini-sub" style="color:#1f2937">Crédito ${formatBRL(
+      fromCents(t.credito)
+    )} · Débito ${formatBRL(fromCents(t.debito))}</div>
   </div>`;
-    }).join('');
+    })
+    .join("");
 
   const totalCard = `
   <div class="card-mini total">
     <div class="mini-title" style="color:#0f172a">Total Geral</div>
-    <div class="mini-count" style="color:#0f172a">Saldo: ${formatBRL(fromCents(totalGeralCredito - totalGeralDebito))}</div>
-    <div class="mini-sub"   style="color:#1f2937">Crédito ${formatBRL(fromCents(totalGeralCredito))} · Débito ${formatBRL(fromCents(totalGeralDebito))}</div>
+    <div class="mini-count" style="color:#0f172a">Saldo: ${formatBRL(
+      fromCents(totalGeralCredito - totalGeralDebito)
+    )}</div>
+    <div class="mini-sub"   style="color:#1f2937">Crédito ${formatBRL(
+      fromCents(totalGeralCredito)
+    )} · Débito ${formatBRL(fromCents(totalGeralDebito))}</div>
   </div>`;
 
   return `<div class="mini-grid">
@@ -330,71 +428,96 @@ ${totalCard}
 // ===================== HTML Builder (LiquidGlass + Logo) =====================
 
 function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
-  const empresa = escapeHtml(rows[0]?.empresa ?? '');
-  const cnpj    = escapeHtml(rows[0]?.cnpj ?? '');
+  const empresa = escapeHtml(rows[0]?.empresa ?? "");
+  const cnpj = escapeHtml(rows[0]?.cnpj ?? "");
 
   // conta_* dos itens (primeiro não-vazio)
-  const contaNumeroRaw   = firstNonEmpty(rows, ['conta_numero', 'conta_num']);
-  const contaCodigoRaw   = firstNonEmpty(rows, ['conta_codigo', 'conta_cod']);
-  const contaDescrRaw    = firstNonEmpty(rows, ['conta_descricao', 'conta_desc']);
+  const contaNumeroRaw = firstNonEmpty(rows, ["conta_numero", "conta_num"]);
+  const contaCodigoRaw = firstNonEmpty(rows, ["conta_codigo", "conta_cod"]);
+  const contaDescrRaw = firstNonEmpty(rows, ["conta_descricao", "conta_desc"]);
 
-  const contaNumero = contaNumeroRaw == null ? '—' : escapeHtml(String(contaNumeroRaw));
-  const contaCodigo = contaCodigoRaw == null ? '—' : escapeHtml(String(contaCodigoRaw));
-  const contaDescr  = contaDescrRaw  == null ? '—' : escapeHtml(String(contaDescrRaw));
+  const contaNumero =
+    contaNumeroRaw == null ? "—" : escapeHtml(String(contaNumeroRaw));
+  const contaCodigo =
+    contaCodigoRaw == null ? "—" : escapeHtml(String(contaCodigoRaw));
+  const contaDescr =
+    contaDescrRaw == null ? "—" : escapeHtml(String(contaDescrRaw));
 
   // Precompute helpers
   const prepared = rows.map((r, idx) => {
     const dateCell = pickDateCell(r, sortField);
     const d = safeDateFromAny(dateCell);
-    const ts = d ? d.getTime() : new Date('1900-01-01T00:00:00Z').getTime();
+    const ts = d ? d.getTime() : new Date("1900-01-01T00:00:00Z").getTime();
 
-    const creditoCents = (readMoneyFieldFlexible(r, ['valor_creditado', 'credito', 'valor credito']) ?? 0);
-    const debitoCents  = (readMoneyFieldFlexible(r, ['valor_debitado',  'debito',  'valor debito'])  ?? 0);
+    const creditoCents =
+      readMoneyFieldFlexible(r, [
+        "valor_creditado",
+        "credito",
+        "valor credito",
+      ]) ?? 0;
+    const debitoCents =
+      readMoneyFieldFlexible(r, ["valor_debitado", "debito", "valor debito"]) ??
+      0;
 
-    const nfKey = String(r.nf ?? '').padStart(20, '0');
+    const nfKey = String(r.nf ?? "").padStart(20, "0");
     const statusPri = getStatusPriority(r.status);
-    const statusRaw = r.status ?? '';
+    const statusRaw = r.status ?? "";
     const statusGroup = statusBucketLabel(statusRaw);
 
-    return { r, idx, ts, creditoCents, debitoCents, nfKey, statusPri, dateCell, statusRaw, statusGroup };
+    return {
+      r,
+      idx,
+      ts,
+      creditoCents,
+      debitoCents,
+      nfKey,
+      statusPri,
+      dateCell,
+      statusRaw,
+      statusGroup,
+    };
   });
 
   // Ordenação (com estabilidade por grupo)
   prepared.sort((A, B) => {
-    const a = A, b = B;
+    const a = A,
+      b = B;
     let diff = 0;
 
-    if (sortBy === 'status' || sortBy === 'status+date') {
+    if (sortBy === "status" || sortBy === "status+date") {
       diff = a.statusPri - b.statusPri;
-      if (diff !== 0) return sortOrder === 'desc' ? -diff : diff;
+      if (diff !== 0) return sortOrder === "desc" ? -diff : diff;
       diff = a.statusGroup.localeCompare(b.statusGroup);
-      if (diff !== 0) return sortOrder === 'desc' ? -diff : diff;
+      if (diff !== 0) return sortOrder === "desc" ? -diff : diff;
     }
 
-    if (sortBy === 'date' || sortBy === 'status+date') {
+    if (sortBy === "date" || sortBy === "status+date") {
       diff = a.ts - b.ts;
-      if (diff !== 0) return sortOrder === 'desc' ? -diff : diff;
+      if (diff !== 0) return sortOrder === "desc" ? -diff : diff;
     }
 
-    diff = a.nfKey.localeCompare(b.nfKey) || (a.creditoCents - b.creditoCents) || (a.idx - b.idx);
-    return sortOrder === 'desc' ? -diff : diff;
+    diff =
+      a.nfKey.localeCompare(b.nfKey) ||
+      a.creditoCents - b.creditoCents ||
+      a.idx - b.idx;
+    return sortOrder === "desc" ? -diff : diff;
   });
 
   // Totais em centavos (cards)
   const totals = {
-    'Conciliado': { count: 0, credito: 0, debito: 0 },
-    'Conciliação Divergente': { count: 0, credito: 0, debito: 0 },
-    'NF em Aberto': { count: 0, credito: 0, debito: 0 },
-    'Recebimento a Maior': { count: 0, credito: 0, debito: 0 },
-    'Pagamento a Maior': { count: 0, credito: 0, debito: 0 },
-    'Não Conciliado': { count: 0, credito: 0, debito: 0 },
-    'Não Encontrado/Outros': { count: 0, credito: 0, debito: 0 },
+    Conciliado: { count: 0, credito: 0, debito: 0 },
+    "Conciliação Divergente": { count: 0, credito: 0, debito: 0 },
+    "NF em Aberto": { count: 0, credito: 0, debito: 0 },
+    "Recebimento a Maior": { count: 0, credito: 0, debito: 0 },
+    "Pagamento a Maior": { count: 0, credito: 0, debito: 0 },
+    "Não Conciliado": { count: 0, credito: 0, debito: 0 },
+    "Não Encontrado/Outros": { count: 0, credito: 0, debito: 0 },
   };
   let totalGeralCredito = 0;
   let totalGeralDebito = 0;
 
   function renderSubtotalRow(label, creditoSum, debitoSum) {
-    const safe = escapeHtml(String(label ?? ''));
+    const safe = escapeHtml(String(label ?? ""));
     return `
 <tr class="subtotal">
   <td colspan="2"><strong>Subtotal — ${safe}</strong></td>
@@ -421,15 +544,15 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   // Linhas detalhadas por lançamento (filhas)
   function renderDetalheRows(r) {
     const cred = Array.isArray(r.detalhes_credito) ? r.detalhes_credito : [];
-    const deb  = Array.isArray(r.detalhes_debito)  ? r.detalhes_debito  : [];
+    const deb = Array.isArray(r.detalhes_debito) ? r.detalhes_debito : [];
 
-    let html = '';
+    let html = "";
 
     for (const l of cred) {
-      const data = l?.data ? formatDateBR(l.data, false) : '—';
-      const num  = l?.numero == null ? '—' : escapeHtml(String(l.numero));
-      const val  = formatBRL(l?.valor ?? 0);
-      const hist = l?.historico ? escapeHtml(String(l.historico)) : '';
+      const data = l?.data ? formatDateBR(l.data, false) : "—";
+      const num = l?.numero == null ? "—" : escapeHtml(String(l.numero));
+      const val = formatBRL(l?.valor ?? 0);
+      const hist = l?.historico ? escapeHtml(String(l.historico)) : "";
 
       html += `
 <tr class="det det-cred">
@@ -445,10 +568,10 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     }
 
     for (const l of deb) {
-      const data = l?.data ? formatDateBR(l.data, false) : '—';
-      const num  = l?.numero == null ? '—' : escapeHtml(String(l.numero));
-      const val  = formatBRL(l?.valor ?? 0);
-      const hist = l?.historico ? escapeHtml(String(l.historico)) : '';
+      const data = l?.data ? formatDateBR(l.data, false) : "—";
+      const num = l?.numero == null ? "—" : escapeHtml(String(l.numero));
+      const val = formatBRL(l?.valor ?? 0);
+      const hist = l?.historico ? escapeHtml(String(l.historico)) : "";
 
       html += `
 <tr class="det det-deb">
@@ -466,15 +589,26 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     return html;
   }
 
-  let bodyRows = '';
+  let bodyRows = "";
   let currentGroup = null;
   let groupCred = 0;
   let groupDeb = 0;
 
   // Status que NÃO devem exibir detalhes (independente do toggle)
-  const NO_DETAILS_GROUPS = new Set(['NF em Aberto', 'Recebimento a Maior', 'Pagamento a Maior']);
+  const NO_DETAILS_GROUPS = new Set([
+    "NF em Aberto",
+    "Recebimento a Maior",
+    "Pagamento a Maior",
+  ]);
 
-  for (const { r, creditoCents, debitoCents, dateCell, statusRaw, statusGroup } of prepared) {
+  for (const {
+    r,
+    creditoCents,
+    debitoCents,
+    dateCell,
+    statusRaw,
+    statusGroup,
+  } of prepared) {
     if (currentGroup === null) {
       currentGroup = statusGroup;
       groupCred = 0;
@@ -498,11 +632,14 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     totalGeralDebito += debitoCents;
 
     const dataFmt = formatDateBR(dateCell);
-    const nf = (r.nf === null || r.nf === undefined || r.nf === '') ? '—' : escapeHtml(String(r.nf));
+    const nf =
+      r.nf === null || r.nf === undefined || r.nf === ""
+        ? "—"
+        : escapeHtml(String(r.nf));
     const lcredArr = toArrayLaunch(r.lancamento_credito);
     const ldebArr = toArrayLaunch(r.lancamento_debito);
-    const lcred = lcredArr.length ? escapeHtml(lcredArr.join(', ')) : '—';
-    const ldeb = ldebArr.length ? escapeHtml(ldebArr.join(', ')) : '—';
+    const lcred = lcredArr.length ? escapeHtml(lcredArr.join(", ")) : "—";
+    const ldeb = ldebArr.length ? escapeHtml(ldebArr.join(", ")) : "—";
     const hist = deriveHistory(r);
     const pillColor = statusPillColor(statusRaw);
     const statusTxt = escapeHtml(String(statusRaw));
@@ -526,8 +663,10 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
 
     // Detalhes (se existirem e se permitido pelo grupo)
     if (showDetails && !NO_DETAILS_GROUPS.has(statusGroup)) {
-      if ((Array.isArray(r.detalhes_credito) && r.detalhes_credito.length) ||
-          (Array.isArray(r.detalhes_debito)  && r.detalhes_debito.length)) {
+      if (
+        (Array.isArray(r.detalhes_credito) && r.detalhes_credito.length) ||
+        (Array.isArray(r.detalhes_debito) && r.detalhes_debito.length)
+      ) {
         bodyRows += renderDetalheRows(r);
       }
     }
@@ -548,24 +687,33 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   <span class="leg leg-oth">Outros</span>
 </div>`;
 
-  const totalsHtml = renderTotalsCards(totals, totalGeralCredito, totalGeralDebito);
+  const totalsHtml = renderTotalsCards(
+    totals,
+    totalGeralCredito,
+    totalGeralDebito
+  );
 
   const contaInfoHtml = `
 <div class="conta">${contaNumero} · ${contaCodigo} · ${contaDescr}</div>`;
 
-  const generatedAt = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const generatedAt = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+  });
 
-  // --- TOGGLE button + script
+  // --- TOGGLE + PDF buttons
   const controlsHtml = `
 <button id="toggleDetails" onclick="toggleDetails()" aria-pressed="false">
-  ${showDetails ? 'Ocultar detalhes' : 'Mostrar detalhes'}
+  ${showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
+</button>
+<button id="downloadPdf" onclick="exportPDF()" aria-pressed="false" title="Salvar este relatório em PDF">
+  Baixar PDF
 </button>`;
 
   const toggleScript = `
 <script>
 (function(){
   const LS_KEY = 'relatorio_show_details';
-  const initial = ${showDetails ? 'true' : 'false'};
+  const initial = ${showDetails ? "true" : "false"};
   let show = (function(){
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -587,6 +735,35 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     show = !show;
     try { localStorage.setItem(LS_KEY, JSON.stringify(show)); } catch {}
     apply();
+  };
+
+  // === Exportar como PDF usando print-to-PDF do navegador
+  window.exportPDF = function(){
+    var prevTitle = document.title;
+    var now = new Date();
+    var yyyy = now.getFullYear();
+    var mm = String(now.getMonth()+1).padStart(2,'0');
+    var dd = String(now.getDate()).padStart(2,'0');
+
+    function safe(s){
+      return String(s||'')
+        .replace(/[\\s\\/:*?"<>|]+/g,'_')  // limpa caracteres problemáticos
+        .replace(/_+/g,'_')                // normaliza múltiplos _
+        .slice(0,80);
+    }
+
+    // usa empresa/cnpj do cabeçalho já escapados; safe() cuida do resto
+    var sug = 'Relatorio_Conciliacao_${empresa}_${cnpj}_' + yyyy + '-' + mm + '-' + dd;
+    document.title = safe(sug);
+
+    function restore(){
+      document.title = prevTitle;
+      window.removeEventListener('afterprint', restore);
+    }
+    window.addEventListener('afterprint', restore);
+
+    // Abre a caixa de diálogo; o usuário escolhe "Salvar como PDF"
+    setTimeout(function(){ window.print(); }, 0);
   };
 
   if (!show) {
@@ -786,7 +963,7 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   .mini-count{font-weight:900}
   .mini-sub{font-size:12px}
 
-  /* ===== Toolbar / Botão ===== */
+  /* ===== Toolbar / Botões ===== */
   .toolbar{display:flex;justify-content:center;margin:10px 0 16px 0}
   #toggleDetails{
     border:none; border-radius:999px; padding:.6rem 1rem; font-weight:900; color:#fff; cursor:pointer;
@@ -800,6 +977,21 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   #toggleDetails:hover{ filter:brightness(1.06); }
   #toggleDetails:active{ transform:translateY(1px); filter:brightness(0.96); }
   #toggleDetails:focus-visible{ outline:3px solid color-mix(in oklab, var(--c2) 65%, white 35%); outline-offset:3px; }
+
+  /* Botão PDF com o mesmo visual do toggle */
+  #downloadPdf{
+    border:none; border-radius:999px; padding:.6rem 1rem; font-weight:900; color:#fff; cursor:pointer;
+    margin-left:10px;
+    background:linear-gradient(100deg,
+      color-mix(in srgb, var(--c2) 55%, #0a0a0a 45%),
+      color-mix(in srgb, var(--c1) 55%, #0a0a0a 45%)
+    );
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.10), 0 6px 16px rgba(31,41,55,.35);
+    transition:transform .08s ease, filter .2s ease;
+  }
+  #downloadPdf:hover{ filter:brightness(1.06); }
+  #downloadPdf:active{ transform:translateY(1px); filter:brightness(0.96); }
+  #downloadPdf:focus-visible{ outline:3px solid color-mix(in oklab, var(--c1) 65%, white 35%); outline-offset:3px; }
 
   /* ===== Tabela ===== */
   .table-wrap{overflow:auto; border-radius:12px; border:1px solid rgba(0,0,0,.08); background:#fff}
@@ -831,18 +1023,22 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     body { background:#fff !important; }
     .page::before,.page::after{ display:none !important; }
     .sheet{ box-shadow:none; border:0; padding:0; }
-    .toolbar{ display:none; }
+    .toolbar{ display:none; } /* esconde os botões no PDF */
     h1{ -webkit-text-fill-color:initial; color:#111 !important; background:none !important; }
     .table-wrap{ border:0; }
     th{ position:static; }
     .mini-grid{ grid-template-columns:repeat(2,1fr); }
   }
 
+  /* Opcional: controlar tamanho e margem do PDF */
+  /* @page { size: A4 landscape; margin: 12mm; } */
+
   /* Fallback sem color-mix */
   @supports not (color: color-mix(in srgb, white 50%, black 50%)){
     h1{ background:linear-gradient(100deg,#0ea5b5,#5b21b6);
         -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;color:transparent; }
     #toggleDetails{ background:linear-gradient(100deg,#0e7490,#4c1d95); }
+    #downloadPdf{ background:linear-gradient(100deg,#4c1d95,#0e7490); }
   }
 </style>
 </head>
@@ -886,7 +1082,7 @@ function firstNonEmpty(rows, keys) {
   for (const r of rows) {
     for (const k of keys) {
       const v = r?.[k];
-      if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+      if (v !== undefined && v !== null && String(v).trim() !== "") return v;
     }
   }
   return null;
@@ -907,16 +1103,20 @@ const html = rows.length
 return [
   {
     json: {
-      fileName: 'relatorio_conciliacao.html',
-      mimeType: 'text/html',
-      note: `HTML gerado. Ordenação: ${sortBy} (${sortOrder})${sortField ? `, campo: ${sortField}` : ''}. Detalhes: ${showDetails ? 'visíveis' : 'ocultos'} (grupos "NF em Aberto", "Pagamento a Maior" e "Recebimento a Maior" sempre sem detalhes). Cards ocultam categorias com 0 lançamentos.`,
+      fileName: "relatorio_conciliacao.html",
+      mimeType: "text/html",
+      note: `HTML gerado. Ordenação: ${sortBy} (${sortOrder})${
+        sortField ? `, campo: ${sortField}` : ""
+      }. Detalhes: ${
+        showDetails ? "visíveis" : "ocultos"
+      } (grupos "NF em Aberto", "Pagamento a Maior" e "Recebimento a Maior" sempre sem detalhes). Cards ocultam categorias com 0 lançamentos. Incluído botão "Baixar PDF".`,
     },
     binary: {
       data: {
-        data: Buffer.from(html, 'utf8').toString('base64'),
-        mimeType: 'text/html',
-        fileName: 'relatorio_conciliacao.html',
-      }
-    }
-  }
+        data: Buffer.from(html, "utf8").toString("base64"),
+        mimeType: "text/html",
+        fileName: "relatorio_conciliacao.html",
+      },
+    },
+  },
 ];
