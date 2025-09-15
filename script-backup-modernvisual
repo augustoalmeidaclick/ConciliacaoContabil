@@ -109,15 +109,16 @@ function isConciliadoLike(status) {
   return isConciliadoExato || isPerfeita;
 }
 
+// >>> CORES MAIS VISÍVEIS (pastéis mais fortes) <<<
 function statusBg(status) {
   const s = norm(status);
-  if (s.includes("nf em aberto")) return "#e3f2fd"; // azul claro
-  if (s.includes("recebimento a maior")) return "#e0f7fa"; // ciano claro
-  if (s.includes("pagamento a maior")) return "#f3e5f5"; // roxo claro
-  if (s.includes("nao conciliado")) return "#ffebee"; // vermelho claro
-  if (isConciliadoLike(s)) return "#e8f5e9"; // verde claro
-  if (/\bparcial\w*|\bdiverg\w*/.test(s)) return "#fff8e1"; // amarelo claro
-  return "#f5f5f5"; // neutro
+  if (s.includes("nf em aberto")) return "#cfe8ff";       // azul + visível
+  if (s.includes("recebimento a maior")) return "#bff3f9"; // ciano + visível
+  if (s.includes("pagamento a maior")) return "#e6d5f7";   // roxo + visível
+  if (s.includes("nao conciliado")) return "#ffd6d9";      // vermelho + visível
+  if (isConciliadoLike(s)) return "#c8f7d1";               // verde + visível
+  if (/\bparcial\w*|\bdiverg\w*/.test(s)) return "#ffefb3"; // amarelo + visível
+  return "#e9e9e9"; // neutro um pouco mais forte
 }
 
 function statusPillColor(status) {
@@ -355,50 +356,48 @@ function renderTotalsCards(totals, totalGeralCredito, totalGeralDebito) {
 
   const STYLE = {
     Conciliado: {
-      bg: "#e8f5e9",
+      bg: "#c8f7d1",
       border: "rgba(46,125,50,.25)",
       title: "#1f3b2a",
     },
     "Conciliação Divergente": {
-      bg: "#fff8e1",
+      bg: "#ffefb3",
       border: "rgba(249,168,37,.25)",
       title: "#4a3a0a",
     },
     "NF em Aberto": {
-      bg: "#e3f2fd",
+      bg: "#cfe8ff",
       border: "rgba(21,101,192,.25)",
       title: "#102a43",
     },
     "Recebimento a Maior": {
-      bg: "#e0f7fa",
+      bg: "#bff3f9",
       border: "rgba(0,131,143,.25)",
       title: "#0a2a2e",
     },
     "Pagamento a Maior": {
-      bg: "#f3e5f5",
+      bg: "#e6d5f7",
       border: "rgba(106,27,154,.25)",
       title: "#2e1140",
     },
     "Não Conciliado": {
-      bg: "#ffebee",
+      bg: "#ffd6d9",
       border: "rgba(198,40,40,.25)",
       title: "#411316",
     },
     "Não Encontrado/Outros": {
-      bg: "#eeeeee",
+      bg: "#e9e9e9",
       border: "#d1d5db",
       title: "#111827",
     },
   };
 
-  const cardsHtml = ORDER.filter((lbl) => (totals[lbl]?.count || 0) > 0) // esconde vazios
+  const cardsHtml = ORDER.filter((lbl) => (totals[lbl]?.count || 0) > 0)
     .map((lbl) => {
       const t = totals[lbl];
       const st = STYLE[lbl];
       return `
-  <div class="card-mini" style="background:${st.bg};border:1px solid ${
-        st.border
-      }">
+  <div class="card-mini" style="background:${st.bg};border:1px solid ${st.border}">
     <div class="mini-title" style="color:${st.title}">${lbl}</div>
     <div class="mini-count" style="color:#0f172a">${t.count} lanç.</div>
     <div class="mini-sub" style="color:#1f2937">Crédito ${formatBRL(
@@ -643,22 +642,21 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     const hist = deriveHistory(r);
     const pillColor = statusPillColor(statusRaw);
     const statusTxt = escapeHtml(String(statusRaw));
+    const bgColor = statusBg(statusRaw);
 
-    // Linha "resumo"
+    // Linha "resumo" — cada <td> recebe a cor do status
     bodyRows += `
-<tr style="background:${statusBg(statusRaw)}">
-  <td>${dataFmt}</td>
-  <td>${nf}</td>
-  <td class="right">${formatBRL(fromCents(creditoCents))}</td>
-  <td class="right">${formatBRL(fromCents(debitoCents))}</td>
-  <td class="hist" title="${hist.title}">${hist.display}</td>
-  <td>
-    <span class="pill" style="
-      color:${pillColor};
-    ">${statusTxt}</span>
+<tr>
+  <td style="background:${bgColor}">${dataFmt}</td>
+  <td style="background:${bgColor}">${nf}</td>
+  <td class="right" style="background:${bgColor}">${formatBRL(fromCents(creditoCents))}</td>
+  <td class="right" style="background:${bgColor}">${formatBRL(fromCents(debitoCents))}</td>
+  <td class="hist" title="${hist.title}" style="background:${bgColor}">${hist.display}</td>
+  <td style="background:${bgColor}">
+    <span class="pill" style="color:${pillColor};">${statusTxt}</span>
   </td>
-  <td>${lcred}</td>
-  <td>${ldeb}</td>
+  <td style="background:${bgColor}">${lcred}</td>
+  <td style="background:${bgColor}">${ldeb}</td>
 </tr>`;
 
     // Detalhes (se existirem e se permitido pelo grupo)
@@ -747,12 +745,11 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
 
     function safe(s){
       return String(s||'')
-        .replace(/[\\s\\/:*?"<>|]+/g,'_')  // limpa caracteres problemáticos
-        .replace(/_+/g,'_')                // normaliza múltiplos _
+        .replace(/[\\s\\/:*?"<>|]+/g,'_')
+        .replace(/_+/g,'_')
         .slice(0,80);
     }
 
-    // usa empresa/cnpj do cabeçalho já escapados; safe() cuida do resto
     var sug = 'Relatorio_Conciliacao_${empresa}_${cnpj}_' + yyyy + '-' + mm + '-' + dd;
     document.title = safe(sug);
 
@@ -762,12 +759,10 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     }
     window.addEventListener('afterprint', restore);
 
-    // Abre a caixa de diálogo; o usuário escolhe "Salvar como PDF"
     setTimeout(function(){ window.print(); }, 0);
   };
 
   if (!show) {
-    // evita "flash" de detalhes quando estado inicial é oculto
     document.addEventListener('DOMContentLoaded', function(){
       var style = document.createElement('style');
       style.id = 'detHiddenInit';
@@ -832,26 +827,10 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
     }
   }
 
-  .page{
-    min-height:100dvh;
-    display:grid;
-    place-items:start center;
-    padding:28px;
-    position:relative;
-    overflow:hidden;
-  }
+  .page{ min-height:100dvh; display:grid; place-items:start center; padding:28px; position:relative; overflow:hidden; }
 
-  /* Bolhas animadas */
   .page::before,.page::after{
-    content:"";
-    position:absolute;
-    z-index:0;
-    width:56vmax;height:56vmax;
-    filter:blur(40px);
-    opacity:.24;
-    transform:translate(-10%,-15%);
-    pointer-events:none;
-    animation:lg-blob 14s ease-in-out infinite alternate;
+    content:""; position:absolute; z-index:0; width:56vmax;height:56vmax; filter:blur(40px); opacity:.24; transform:translate(-10%,-15%); pointer-events:none; animation:lg-blob 14s ease-in-out infinite alternate;
   }
   .page::before{
     left:-20vmax; top:-25vmax;
@@ -870,81 +849,35 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   @media (prefers-color-scheme: dark){ .page::before,.page::after{ opacity:.20; } }
   @media (prefers-reduced-motion: reduce){ .page::before,.page::after{ animation:none; } }
 
-  /* ===== Sheet (glass) ===== */
   .sheet{
-    z-index:1;
-    width:min(1200px, 92vw);
-    margin:auto;
-    background:var(--sheet);
-    border:1px solid var(--sheet-border);
-    border-radius:18px;
-    box-shadow:0 18px 50px rgba(2,6,23,.28);
-    backdrop-filter:saturate(var(--glass-sat)) blur(var(--glass-blur));
-    -webkit-backdrop-filter:saturate(var(--glass-sat)) blur(var(--glass-blur));
+    z-index:1; width:min(1200px, 92vw); margin:auto; background:var(--sheet);
+    border:1px solid var(--sheet-border); border-radius:18px; box-shadow:0 18px 50px rgba(2,6,23,.28);
+    backdrop-filter:saturate(var(--glass-sat)) blur(var(--glass-blur)); -webkit-backdrop-filter:saturate(var(--glass-sat)) blur(var(--glass-blur));
     padding:22px;
   }
 
-  /* ===== Logo (glasschip) ===== */
-  .logo{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin: 4px 0 10px 0;
-  }
+  .logo{ display:flex; align-items:center; justify-content:center; margin: 4px 0 10px 0; }
   .glasschip{
-    padding:8px 12px;
-    border-radius:12px;
-    background: rgba(255,255,255,.55);
-    border: 1px solid rgba(2,6,23,.08);
-    backdrop-filter: saturate(140%) blur(10px);
-    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    padding:8px 12px; border-radius:12px; background: rgba(255,255,255,.55); border: 1px solid rgba(2,6,23,.08);
+    backdrop-filter: saturate(140%) blur(10px); -webkit-backdrop-filter: saturate(140%) blur(10px);
   }
   @media (prefers-color-scheme: dark){
-    .glasschip{
-      background: rgba(11,18,32,.35);
-      border-color: rgba(148,163,184,.18);
-    }
+    .glasschip{ background: rgba(11,18,32,.35); border-color: rgba(148,163,184,.18); }
   }
-  .logo img{
-    max-height:72px; width:auto; height:auto;
-    image-rendering: -webkit-optimize-contrast;
-    filter: drop-shadow(0 2px 6px rgba(2,6,23,.12));
-  }
+  .logo img{ max-height:72px; width:auto; height:auto; image-rendering: -webkit-optimize-contrast; filter: drop-shadow(0 2px 6px rgba(2,6,23,.12)); }
   @media (max-width: 420px){ .logo img{ max-height: 60px; } }
-  @media (prefers-color-scheme: dark){
-    .logo img{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)) brightness(1.05); }
-  }
-  @media print{
-    .logo{ margin: 0 0 6px 0; }
-    .logo img{ filter: none; max-height: 52px; }
-  }
+  @media (prefers-color-scheme: dark){ .logo img{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)) brightness(1.05); } }
+  @media print{ .logo{ margin: 0 0 6px 0; } .logo img{ filter: none; max-height: 52px; } }
 
-  /* ===== Cabeçalho ===== */
   h1{
-    margin:0 0 6px 0;
-    font-weight:900;
-    text-align:center;
-    font-size:clamp(18px, 2.2vw, 28px);
-    letter-spacing:.01em;
-    background:linear-gradient(100deg,
-      color-mix(in srgb, var(--c1) 80%, #0a0a0a 20%),
-      color-mix(in srgb, var(--c2) 80%, #0a0a0a 20%)
-    );
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    background-clip:text;
-    color:transparent;
+    margin:0 0 6px 0; font-weight:900; text-align:center; font-size:clamp(18px, 2.2vw, 28px); letter-spacing:.01em;
+    background:linear-gradient(100deg, color-mix(in srgb, var(--c1) 80%, #0a0a0a 20%), color-mix(in srgb, var(--c2) 80%, #0a0a0a 20%));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; color:transparent;
   }
   .sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px}
   .conta{ text-align:center; margin:8px 0 16px 0; color:var(--text); font-weight:800; }
 
-  /* ===== Legend ===== */
-  .legend{
-    display:flex; flex-wrap:wrap; gap:8px;
-    align-items:center; justify-content:center;
-    margin:.5rem 0 1rem 0;
-    font-size:12px; color: #222;
-  }
+  .legend{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; margin:.5rem 0 1rem 0; font-size:12px; color: #222; }
   .leg{display:inline-flex;align-items:center;gap:8px;padding:.35rem .6rem;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,.06)}
   .leg::before{content:"";width:12px;height:12px;border-radius:2px;background:#ccc;display:inline-block}
   .leg-ok::before{background:#2e7d32}
@@ -955,7 +888,6 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   .leg-no::before{background:#c62828}
   .leg-oth::before{background:#9e9e9e}
 
-  /* ===== Cards de total ===== */
   .mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:12px 0 16px 0}
   .card-mini{border-radius:12px;padding:12px;background:#f5f5f5;border:1px solid #ddd}
   .card-mini.total{background:rgba(255,255,255,.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
@@ -963,14 +895,10 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   .mini-count{font-weight:900}
   .mini-sub{font-size:12px}
 
-  /* ===== Toolbar / Botões ===== */
   .toolbar{display:flex;justify-content:center;margin:10px 0 16px 0}
   #toggleDetails{
-    border:none; border-radius:999px; padding:.6rem 1rem; font-weight:900; color:#fff; cursor:pointer;
-    background:linear-gradient(100deg,
-      color-mix(in srgb, var(--c1) 55%, #0a0a0a 45%),
-      color-mix(in srgb, var(--c2) 55%, #0a0a0a 45%)
-    ); /* mais escuro */
+    border:none; border-radius:999px; padding:.6rem 1rem; font-weight:500; color:#fff; cursor:pointer;
+    background:linear-gradient(100deg, color-mix(in srgb, var(--c1) 55%, #0a0a0a 45%), color-mix(in srgb, var(--c2) 55%, #0a0a0a 45%));
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.10), 0 6px 16px rgba(31,41,55,.35);
     transition:transform .08s ease, filter .2s ease;
   }
@@ -978,14 +906,9 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   #toggleDetails:active{ transform:translateY(1px); filter:brightness(0.96); }
   #toggleDetails:focus-visible{ outline:3px solid color-mix(in oklab, var(--c2) 65%, white 35%); outline-offset:3px; }
 
-  /* Botão PDF com o mesmo visual do toggle */
   #downloadPdf{
-    border:none; border-radius:999px; padding:.6rem 1rem; font-weight:900; color:#fff; cursor:pointer;
-    margin-left:10px;
-    background:linear-gradient(100deg,
-      color-mix(in srgb, var(--c2) 55%, #0a0a0a 45%),
-      color-mix(in srgb, var(--c1) 55%, #0a0a0a 45%)
-    );
+    border:none; border-radius:999px; padding:.6rem 1rem; font-weight:500; color:#fff; cursor:pointer; margin-left:10px;
+    background:linear-gradient(100deg, color-mix(in srgb, var(--c2) 55%, #0a0a0a 45%), color-mix(in srgb, var(--c1) 55%, #0a0a0a 45%));
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.10), 0 6px 16px rgba(31,41,55,.35);
     transition:transform .08s ease, filter .2s ease;
   }
@@ -993,23 +916,21 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   #downloadPdf:active{ transform:translateY(1px); filter:brightness(0.96); }
   #downloadPdf:focus-visible{ outline:3px solid color-mix(in oklab, var(--c1) 65%, white 35%); outline-offset:3px; }
 
-  /* ===== Tabela ===== */
   .table-wrap{overflow:auto; border-radius:12px; border:1px solid rgba(0,0,0,.08); background:#fff}
   table{border-collapse:collapse;width:100%; min-width:880px}
   th,td{border-bottom:1px solid #e5e7eb; padding:10px 12px; vertical-align:top; color:#111}
-  th{background:#e9eef6;text-align:left; position:sticky; top:0; z-index:1; font-size:.86rem}
+  th{background:#fff;text-align:left; position:sticky; top:0; z-index:1; font-size:.86rem}
   td{background:#fdfdfd; font-size:.86rem; color:#111}
-  tbody tr:nth-child(even) td{ background:#f6f7fb; } /* zebra mais escura */
+  tbody tr:nth-child(even) td{ background:#f6f7fb; }
   .right{text-align:right}
   .hist{max-width:520px;word-break:break-word}
-  .subtotal td{background:#e2e8f0 !important; color:#0b1220 !important}
+  .subtotal td{background:#bdbdbd !important; color:#0b1220 !important}
 
   .pill{
     display:inline-block;padding:.25rem .6rem;border-radius:999px;font-weight:800;
     border:1px solid rgba(0,0,0,.08); background:#fff; font-size:.76rem;
   }
 
-  /* Detalhes */
   tr.det td{font-size:12px;border-top:none;border-bottom:1px dashed #d1d5db;background:#fff}
   tr.det-cred td{background:#f3f8ff}
   tr.det-deb  td{background:#f7f3ff}
@@ -1018,22 +939,17 @@ function buildHtml(rows, sortOrder, sortField, sortBy, showDetails) {
   .tag.cred{color:#1565c0}
   .tag.deb {color:#6a1b9a}
 
-  /* Impressão */
   @media print {
     body { background:#fff !important; }
     .page::before,.page::after{ display:none !important; }
     .sheet{ box-shadow:none; border:0; padding:0; }
-    .toolbar{ display:none; } /* esconde os botões no PDF */
+    .toolbar{ display:none; }
     h1{ -webkit-text-fill-color:initial; color:#111 !important; background:none !important; }
     .table-wrap{ border:0; }
     th{ position:static; }
     .mini-grid{ grid-template-columns:repeat(2,1fr); }
   }
 
-  /* Opcional: controlar tamanho e margem do PDF */
-  /* @page { size: A4 landscape; margin: 12mm; } */
-
-  /* Fallback sem color-mix */
   @supports not (color: color-mix(in srgb, white 50%, black 50%)){
     h1{ background:linear-gradient(100deg,#0ea5b5,#5b21b6);
         -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;color:transparent; }
